@@ -43,6 +43,10 @@ if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MA
 	# TODO - Track down what breaks if we do NOT do this.
 	add_compile_options(-Wno-unknown-pragmas)
 
+	# Disable warnings about unused parameters (which is enabled by -Wall).  The LLVM external
+	# dependency  has some of these.
+	add_compile_options(-Wno-unused-parameter)
+
 	# Configuration-specific compiler settings.
 	set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG")
 	set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
