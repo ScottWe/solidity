@@ -25,3 +25,4 @@ add_executable(soltest ${sources} ${headers}
 target_link_libraries(soltest PRIVATE libsolc solidity lll evmasm devcore ${Boost_UNIT_TEST_FRAMEWORK_LIBRARIES})
 
 add_subdirectory(tools)
+
