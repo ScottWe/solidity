@@ -1,5 +1,7 @@
 #include "libsolidity/codegen/IeleCompiler.h"
 
+#include <libsolidity/interface/Exceptions.h>
+
 #include "libiele/IeleContract.h"
 #include "libiele/IeleGlobalVariable.h"
 #include "libiele/IeleIntConstant.h"
@@ -14,11 +16,11 @@ using namespace dev::solidity;
 const ModifierDefinition &IeleCompiler::functionModifier(std::string const& _name) const {
   //solAssert(!m_inheritanceHierarchy.empty(), "No inheritance hierarchy set.");
   //for (ContractDefinition const* contract: m_inheritanceHierarchy)
-  assert(CurrentContract && "CurrentContract not set.");
+  solAssert(CurrentContract, "CurrentContract not set.");
   for (ModifierDefinition const* modifier: CurrentContract->functionModifiers())
     if (modifier->name() == _name)
       return *modifier;
-  assert(false && "IeleCompiler: Function modifier not found.");
+  solAssert(false, "IeleCompiler: Function modifier not found.");
 }
 
 void IeleCompiler::compileContract(
@@ -36,11 +38,11 @@ void IeleCompiler::compileContract(
                                          // integer datatype but using llvm's
                                          // APINt for now.
   for (const VariableDeclaration *stateVariable : contract.stateVariables()) {
-    assert(!stateVariable->value().get() && "not implemented yet");
+    solAssert(!stateVariable->value().get(), "not implemented yet");
     iele::IeleGlobalVariable *GV =
       iele::IeleGlobalVariable::Create(&Context, stateVariable->name(),
                                        CompilingContract);
-    assert(NextStorageAddress != 0 &&
+    solAssert(NextStorageAddress != 0,
            "IeleCompiler: Overflow: more state variables than currently "
            "supported");
     GV->setStorageAddress(iele::IeleIntConstant::Create(&Context,
@@ -151,7 +153,7 @@ bool IeleCompiler::visit(const IfStatement &ifStatement) {
   // Visit condition.
   iele::IeleValue * ConditionValue =
     compileExpression(ifStatement.condition());
-  assert(ConditionValue && "IeleCompiler: Failed to compile if condition.");
+  solAssert(ConditionValue, "IeleCompiler: Failed to compile if condition.");
 
   // If we don't have an if-false block, then we invert the condition.
   if (!HasIfFalse) {
@@ -218,7 +220,7 @@ bool IeleCompiler::visit(const Return &returnStatement) {
 }
 
 void IeleCompiler::appendModifierOrFunctionCode() {
-  assert(CurrentFunction && "IeleCompiler: CurrentFunction not defined");
+  solAssert(CurrentFunction, "IeleCompiler: CurrentFunction not defined");
   
   Block const* codeBlock = nullptr;
   ModifierDepth++;
@@ -226,7 +228,7 @@ void IeleCompiler::appendModifierOrFunctionCode() {
   // The function we are processing has no modifiers. 
   // Process function body as normal...
   if (ModifierDepth >= CurrentFunction->modifiers().size()) {
-    assert(CurrentFunction->isImplemented() && "");
+    solAssert(CurrentFunction->isImplemented(), "Current function is not implemented.");
     codeBlock = &CurrentFunction->body();
   }
   // The function we are processing uses modifiers. 
@@ -236,7 +238,7 @@ void IeleCompiler::appendModifierOrFunctionCode() {
 
     // constructor call should be excluded (and managed separeately)
     if (dynamic_cast<ContractDefinition const*>(modifierInvocation->name()->annotation().referencedDeclaration)) {
-      assert(false && "IeleCompiler: function modifiers on constructor not implemented yet.");
+      solAssert(false, "IeleCompiler: function modifiers on constructor not implemented yet.");
       appendModifierOrFunctionCode();
     }
     else {
@@ -252,12 +254,12 @@ void IeleCompiler::appendModifierOrFunctionCode() {
         iele::IeleLocalVariable::Create(&Context, local->name(), CompilingFunction);
 
       // Is the modifier invocation well formed?
-      assert(modifier.parameters().size() == modifierInvocation->arguments().size() && 
+      solAssert(modifier.parameters().size() == modifierInvocation->arguments().size(),
              "IeleCompiler: modifier has wrong number of parameters!");
 
       // Get Symbol Table
       iele::IeleValueSymbolTable *ST = CompilingFunction->getIeleValueSymbolTable();
-      assert(ST &&
+      solAssert(ST,
             "IeleCompiler: failed to access compiling function's symbol "
             "table while processing function modifer. ");
 
@@ -274,7 +276,7 @@ void IeleCompiler::appendModifierOrFunctionCode() {
 
         // Lookup LHS from symbol table
         iele::IeleValue *LHSValue = ST->lookup(var.name());
-        assert(LHSValue && "IeleCompiler: Failed to compile argument to modifier invocation");
+        solAssert(LHSValue, "IeleCompiler: Failed to compile argument to modifier invocation");
 
         // Make assignment
         iele::IeleInstruction::CreateAssign(
@@ -319,7 +321,7 @@ bool IeleCompiler::visit(const WhileStatement &whileStatement) {
     // In a while loop, we first visit the condition.
     iele::IeleValue * ConditionValue =
       compileExpression(whileStatement.condition());
-    assert(ConditionValue &&
+    solAssert(ConditionValue,
            "IeleCompiler: Failed to compile while condition.");
 
     // Invert the condition.
@@ -348,7 +350,7 @@ bool IeleCompiler::visit(const WhileStatement &whileStatement) {
     CompilingBlock = LoopCondBlock;
     iele::IeleValue * ConditionValue =
       compileExpression(whileStatement.condition());
-    assert(ConditionValue &&
+    solAssert(ConditionValue,
            "IeleCompiler: Failed to compile do-while condition.");
 
     // Branch to the start of the loop if the condition holds.
@@ -386,7 +388,7 @@ bool IeleCompiler::visit(const ForStatement &forStatement) {
   if (forStatement.condition()) {
     iele::IeleValue * ConditionValue =
       compileExpression(*forStatement.condition());
-    assert(ConditionValue && "IeleCompiler: Failed to compile for condition.");
+    solAssert(ConditionValue, "IeleCompiler: Failed to compile for condition.");
 
     // Invert the condition.
     iele::IeleLocalVariable *InvConditionValue =
@@ -449,22 +451,22 @@ bool IeleCompiler::visit(
     // Visit assignments.
     auto const &assignments =
       variableDeclarationStatement.annotation().assignments;
-    assert(assignments.size() == RHSValues.size() &&
+    solAssert(assignments.size() == RHSValues.size(),
            "IeleCompiler: Missing assignment in variable declaration "
            "statement");
     // Visit LHS. We lookup the LHS name in the function's symbol table,
     // where we should find it.
     iele::IeleValueSymbolTable *ST =
       CompilingFunction->getIeleValueSymbolTable();
-    assert(ST &&
+    solAssert(ST,
           "IeleCompiler: failed to access compiling function's symbol "
           "table.");
     for (unsigned i = 0; i < assignments.size(); ++i) {
       const VariableDeclaration *varDecl = assignments[i];
       if (varDecl) {
-        assert (varDecl->type()->category() != Type::Category::Function && "not implemented yet");
+        solAssert (varDecl->type()->category() != Type::Category::Function, "not implemented yet");
         iele::IeleValue *LHSValue = ST->lookup(varDecl->name());
-        assert(LHSValue && "IeleCompiler: Failed to compile LHS of variable "
+        solAssert(LHSValue, "IeleCompiler: Failed to compile LHS of variable "
                            "declaration statement");
         // Assign to RHS.
         iele::IeleInstruction::CreateAssign(
@@ -487,14 +489,14 @@ bool IeleCompiler::visit(const PlaceholderStatement &placeholderStatement) {
 }
 
 bool IeleCompiler::visit(const InlineAssembly &inlineAssembly) {
-  assert(false && "not implemented yet");
+  solAssert(false, "not implemented yet");
   return false;
 }
 
 bool IeleCompiler::visit(const Conditional &condition) {
   // Visit condition.
   iele::IeleValue *ConditionValue = compileExpression(condition.condition());
-  assert(ConditionValue && "IeleCompiler: failed to compile conditional condition.");
+  solAssert(ConditionValue, "IeleCompiler: failed to compile conditional condition.");
 
   // The condition target block is the if-true block.
   iele::IeleBlock *CondTargetBlock =
@@ -539,17 +541,17 @@ bool IeleCompiler::visit(const Conditional &condition) {
 
 bool IeleCompiler::visit(const Assignment &assignment) {
   Token::Value op = assignment.assignmentOperator();
-  assert(op == Token::Assign && "not implemented yet");
-  assert(assignment.leftHandSide().annotation().type->category() !=
-           Type::Category::Tuple && "not implemented yet");
+  solAssert(op == Token::Assign, "not implemented yet");
+  solAssert(assignment.leftHandSide().annotation().type->category() !=
+           Type::Category::Tuple, "not implemented yet");
 
   // Visit LHS.
   iele::IeleValue *LHSValue = compileLValue(assignment.leftHandSide());
-  assert(LHSValue && "IeleCompiler: Failed to compile LHS of assignment");
+  solAssert(LHSValue, "IeleCompiler: Failed to compile LHS of assignment");
 
   // Visit RHS and store it as the result of the expression.
   iele::IeleValue *RHSValue = compileExpression(assignment.rightHandSide());
-  assert(RHSValue && "IeleCompiler: Failed to compile RHS of assignment");
+  solAssert(RHSValue, "IeleCompiler: Failed to compile RHS of assignment");
   CompilingExpressionResult.push_back(RHSValue);
 
   // If the LHS is a global variable we need to perform an sstore, else a simple
@@ -568,7 +570,7 @@ bool IeleCompiler::visit(const TupleExpression &tuple) {
   if (tuple.components().size() == 1) {
     tuple.components()[0].get()->accept(*this);
   } else {
-    assert(false && "not implemented yet");
+    solAssert(false, "not implemented yet");
   }
   return false;
 }
@@ -577,7 +579,7 @@ bool IeleCompiler::visit(const UnaryOperation &unaryOperation) {
   // Visit subexpression.
   iele::IeleValue *SubExprValue = 
     compileExpression(unaryOperation.subExpression());
-  assert(SubExprValue && "IeleCompiler: Failed to compile operand.");
+  solAssert(SubExprValue, "IeleCompiler: Failed to compile operand.");
 
   switch (unaryOperation.getOperator()) {
   case Token::Not: {// !
@@ -605,10 +607,10 @@ bool IeleCompiler::visit(const UnaryOperation &unaryOperation) {
   case Token::Delete: // delete
   case Token::Inc: // ++ (pre- or postfix)
   case Token::Dec: // -- (pre- or postfix)
-    assert(false && "not implemented yet");
+    solAssert(false, "not implemented yet");
     break;
   default:
-    assert(false && "IeleCompiler: Invalid unary operator");
+    solAssert(false, "IeleCompiler: Invalid unary operator");
     break;
   }
 
@@ -619,10 +621,10 @@ bool IeleCompiler::visit(const BinaryOperation &binaryOperation) {
   // Visit operands.
   iele::IeleValue *LeftOperandValue = 
     compileExpression(binaryOperation.leftExpression());
-  assert(LeftOperandValue && "IeleCompiler: Failed to compile left operand.");
+  solAssert(LeftOperandValue, "IeleCompiler: Failed to compile left operand.");
   iele::IeleValue *RightOperandValue = 
     compileExpression(binaryOperation.rightExpression());
-  assert(RightOperandValue && "IeleCompiler: Failed to compile right operand.");
+  solAssert(RightOperandValue, "IeleCompiler: Failed to compile right operand.");
 
   // Find corresponding IELE binary opcode.
   iele::IeleInstruction::IeleOps BinOpcode;
@@ -640,8 +642,8 @@ bool IeleCompiler::visit(const BinaryOperation &binaryOperation) {
   case Token::GreaterThan:        BinOpcode = iele::IeleInstruction::CmpGt; break;
   case Token::LessThan:           BinOpcode = iele::IeleInstruction::CmpLt; break;
   default:
-    assert(false && "not implemented yet");
-    assert(false && "IeleCompiler: Invalid binary operator");
+    solAssert(false, "not implemented yet");
+    solAssert(false, "IeleCompiler: Invalid binary operator");
   }
 
   // Create the instruction.
@@ -659,18 +661,18 @@ bool IeleCompiler::visit(const BinaryOperation &binaryOperation) {
 bool IeleCompiler::visit(const FunctionCall &functionCall) {
   // Not supported yet cases.
   if (functionCall.annotation().kind == FunctionCallKind::TypeConversion) {
-    assert(false && "not implemented yet");
+    solAssert(false, "not implemented yet");
     return false;
   }
 
   if (functionCall.annotation().kind ==
         FunctionCallKind::StructConstructorCall) {
-    assert(false && "not implemented yet");
+    solAssert(false, "not implemented yet");
     return false;
   }
 
   if (!functionCall.names().empty()) {
-    assert(false && "not implemented yet");
+    solAssert(false, "not implemented yet");
     return false;
   }
 
@@ -686,13 +688,13 @@ bool IeleCompiler::visit(const FunctionCall &functionCall) {
     // Get target address.
     iele::IeleValue *TargetAddressValue =
       compileExpression(functionCall.expression());
-    assert(TargetAddressValue &&
+    solAssert(TargetAddressValue,
            "IeleCompiler: Failed to compile transfer target address.");
 
     // Get transfer value.
     iele::IeleValue *TransferValue =
       compileExpression(*arguments.front().get());
-    assert(TransferValue &&
+    solAssert(TransferValue,
            "IeleCompiler: Failed to compile transfer value.");
 
     llvm::SmallVector<iele::IeleValue *, 0> EmptyArguments;
@@ -707,7 +709,7 @@ bool IeleCompiler::visit(const FunctionCall &functionCall) {
     // Create call to deposit.
     iele::IeleValueSymbolTable *ST =
       CompilingContract->getIeleValueSymbolTable();
-    assert(ST &&
+    solAssert(ST,
            "IeleCompiler: failed to access compiling contract's symbol table.");
     iele::IeleGlobalVariable *Deposit =
       iele::IeleGlobalVariable::Create(&Context, "deposit");
@@ -735,7 +737,7 @@ bool IeleCompiler::visit(const FunctionCall &functionCall) {
     // Visit condition.
     iele::IeleValue *ConditionValue =
       compileExpression(*arguments.front().get());
-    assert(ConditionValue &&
+    solAssert(ConditionValue,
            "IeleCompiler: Failed to compile require/assert condition.");
 
     // Create check for false.
@@ -751,13 +753,13 @@ bool IeleCompiler::visit(const FunctionCall &functionCall) {
   }
   case FunctionType::Kind::AddMod: {
     iele::IeleValue *Op1 = compileExpression(*arguments[0].get());
-    assert(Op1 &&
+    solAssert(Op1,
            "IeleCompiler: Failed to compile operand 1 of addmod.");
     iele::IeleValue *Op2 = compileExpression(*arguments[1].get());
-    assert(Op2 &&
+    solAssert(Op2,
            "IeleCompiler: Failed to compile operand 2 of addmod.");
     iele::IeleValue *Modulus = compileExpression(*arguments[2].get());
-    assert(Modulus &&
+    solAssert(Modulus,
            "IeleCompiler: Failed to compile modulus of addmod.");
 
     iele::IeleLocalVariable *AddModValue =
@@ -770,13 +772,13 @@ bool IeleCompiler::visit(const FunctionCall &functionCall) {
   }
   case FunctionType::Kind::MulMod: {
     iele::IeleValue *Op1 = compileExpression(*arguments[0].get());
-    assert(Op1 &&
+    solAssert(Op1,
            "IeleCompiler: Failed to compile operand 1 of addmod.");
     iele::IeleValue *Op2 = compileExpression(*arguments[1].get());
-    assert(Op2 &&
+    solAssert(Op2,
            "IeleCompiler: Failed to compile operand 2 of addmod.");
     iele::IeleValue *Modulus = compileExpression(*arguments[2].get());
-    assert(Modulus &&
+    solAssert(Modulus,
            "IeleCompiler: Failed to compile modulus of addmod.");
 
     iele::IeleLocalVariable *MulModValue =
@@ -812,17 +814,17 @@ bool IeleCompiler::visit(const FunctionCall &functionCall) {
   case FunctionType::Kind::ECRecover:
   case FunctionType::Kind::SHA256:
   case FunctionType::Kind::RIPEMD160:
-    assert(false && "not implemented yet");
+    solAssert(false, "not implemented yet");
     break;
   default:
-      assert(false && "IeleCompiler: Invalid function type.");
+      solAssert(false, "IeleCompiler: Invalid function type.");
   }
 
   return false;
 }
 
 bool IeleCompiler::visit(const NewExpression &newExpression) {
-  assert(false && "not implemented yet");
+  solAssert(false, "not implemented yet");
   return false;
 }
 
@@ -832,13 +834,13 @@ bool IeleCompiler::visit(const MemberAccess &memberAccess) {
   // Not supported yet cases.
   //if (dynamic_cast<const FunctionType *>(
   //        memberAccess.annotation().type.get())) {
-  //  assert(false && "not implemented yet");
+  //  solAssert(false, "not implemented yet");
   //  return false;
   //}
 
   if (dynamic_cast<const TypeType *>(
           memberAccess.expression().annotation().type.get())) {
-    assert(false && "not implemented yet");
+    solAssert(false, "not implemented yet");
     return false;
   }
 
@@ -930,17 +932,17 @@ bool IeleCompiler::visit(const MemberAccess &memberAccess) {
         CompilingBlock);
       CompilingExpressionResult.push_back(BeneficiaryValue);
     } else if (member == "data")
-      assert(false && "IeleCompiler: member not supported in IELE");
+      solAssert(false, "IeleCompiler: member not supported in IELE");
     else if (member == "sig")
-      assert(false && "IeleCompiler: member not supported in IELE");
+      solAssert(false, "IeleCompiler: member not supported in IELE");
     else
-      assert(false && "IeleCompiler: Unknown magic member.");
+      solAssert(false, "IeleCompiler: Unknown magic member.");
     break;
   case Type::Category::Integer:
-    assert((member == "transfer" || member == "send") &&
+    solAssert((member == "transfer" || member == "send"),
            "not implemented yet");
     // Simply forward the result (which should be an address).
-    assert(ExprValue && "IeleCompiler: Failed to compile address");
+    solAssert(ExprValue, "IeleCompiler: Failed to compile address");
     CompilingExpressionResult.push_back(ExprValue);
     break;
   case Type::Category::Contract:
@@ -949,16 +951,16 @@ bool IeleCompiler::visit(const MemberAccess &memberAccess) {
   case Type::Category::Enum:
   case Type::Category::Array:
   case Type::Category::FixedBytes:
-    assert(false && "not implemented yet");
+    solAssert(false, "not implemented yet");
   default:
-    assert(false && "IeleCompiler: Member access to unknown type.");
+    solAssert(false, "IeleCompiler: Member access to unknown type.");
   }
 
   return false;
 }
 
 bool IeleCompiler::visit(const IndexAccess &indexAccess) {
-  assert(false && "not implemented yet");
+  solAssert(false, "not implemented yet");
   return false;
 }
 
@@ -973,7 +975,7 @@ void IeleCompiler::endVisit(const Identifier &identifier) {
     switch (magicVar->type()->category()) {
     case Type::Category::Contract:
       // Reserved identifiers: "this" or "super"
-      assert(false && "not implemented yet");
+      solAssert(false, "not implemented yet");
       return;
     case Type::Category::Integer: {
       // Reserved identifier: now.
@@ -995,7 +997,7 @@ void IeleCompiler::endVisit(const Identifier &identifier) {
 
   // Lookup identifier in the function's symbol table.
   iele::IeleValueSymbolTable *ST = CompilingFunction->getIeleValueSymbolTable();
-  assert(ST &&
+  solAssert(ST,
          "IeleCompiler: failed to access compiling function's symbol table.");
   if (iele::IeleValue *Identifier = ST->lookup(name)) {
     CompilingExpressionResult.push_back(Identifier);
@@ -1004,7 +1006,7 @@ void IeleCompiler::endVisit(const Identifier &identifier) {
 
   // If not found, lookup identifier in the contract's symbol table.
   ST = CompilingContract->getIeleValueSymbolTable();
-  assert(ST &&
+  solAssert(ST,
          "IeleCompiler: failed to access compiling contract's symbol table.");
   if (iele::IeleValue *Identifier = ST->lookup(name)) {
     // If we aren't compiling an lvalue, we have to load the global variable.
@@ -1046,7 +1048,7 @@ void IeleCompiler::endVisit(const Literal &literal) {
   }
   case Type::Category::StringLiteral:
   default:
-    assert(false && "not implemented yet");
+    solAssert(false, "not implemented yet");
     break;
   }
 }
@@ -1087,7 +1089,7 @@ void IeleCompiler::compileTuple(
   // compiled for the expression computation in the CompilingExpressionResult
   // field. This helper should only be used when tupple value is expected as
   // the result of the corresponding expression computation.
-  assert(CompilingExpressionResult.size() > 0);
+  solAssert(CompilingExpressionResult.size() > 0, "expression visitor did not set a result value");
   Result.insert(Result.end(),
                 CompilingExpressionResult.begin(),
                 CompilingExpressionResult.end());
@@ -1110,7 +1112,7 @@ iele::IeleValue *IeleCompiler::compileLValue(const Expression &expression) {
   // field. This helper should only be used when a scalar lvalue is expected as
   // the result of the corresponding expression computation.
   iele::IeleValue *Result = nullptr;
-  assert(CompilingExpressionResult.size() > 0);
+  solAssert(CompilingExpressionResult.size() > 0, "expression visitor did not set a result value");
   Result = CompilingExpressionResult[0];
 
   // Restore expression compilation status and return result.
@@ -1149,7 +1151,7 @@ void IeleCompiler::appendInvalid(iele::IeleValue *Condition) {
   // Create the assert-fail block if it's not already created.
   if (!AssertFailBlock) {
     AssertFailBlock = iele::IeleBlock::Create(&Context, "invalid");
-    assert(false && "not implemented yet");
+    solAssert(false, "not implemented yet");
   }
 
   if (Condition)
