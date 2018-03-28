@@ -2005,7 +2005,6 @@ BOOST_AUTO_TEST_CASE(log_in_constructor)
 	BOOST_CHECK_EQUAL(m_logs[0].topics[0], h256(u256(2)));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(suicide, 1)
 BOOST_AUTO_TEST_CASE(suicide)
 {
 	char const* sourceCode = R"(
@@ -2025,7 +2024,6 @@ BOOST_AUTO_TEST_CASE(suicide)
 	BOOST_CHECK_EQUAL(balanceAt(address), amount);
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(selfdestruct, 1)
 BOOST_AUTO_TEST_CASE(selfdestruct)
 {
 	char const* sourceCode = R"(
