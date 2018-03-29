@@ -1384,7 +1384,6 @@ BOOST_AUTO_TEST_CASE(constructor)
 	testContractAgainstCpp("get(uint256)", get, u256(7));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(simple_accessor, 1)
 BOOST_AUTO_TEST_CASE(simple_accessor)
 {
 	char const* sourceCode = R"(
@@ -3018,7 +3017,6 @@ BOOST_AUTO_TEST_CASE(function_modifier_for_constructor)
 	ABI_CHECK(callContractFunction("getData()"), encodeArgs(4 | 2));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(function_modifier_multiple_times, 1)
 BOOST_AUTO_TEST_CASE(function_modifier_multiple_times)
 {
 	char const* sourceCode = R"(
@@ -3196,7 +3194,6 @@ BOOST_AUTO_TEST_CASE(default_fallback_throws)
 	ABI_CHECK(callContractFunction("f()"), encodeArgs(0));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(short_data_calls_fallback, 2)
 BOOST_AUTO_TEST_CASE(short_data_calls_fallback)
 {
 	char const* sourceCode = R"(
@@ -3212,7 +3209,7 @@ BOOST_AUTO_TEST_CASE(short_data_calls_fallback)
 	sendMessage(vector<bytes>(), "deposit", bytes(), false, 0);
 	ABI_CHECK(callContractFunction("x()"), encodeArgs(2));
 	// should call function
-	sendMessage(vector<bytes>(), "fow", bytes(), false, 0);
+	sendMessage(vector<bytes>(), "fow()", bytes(), false, 0);
 	ABI_CHECK(callContractFunction("x()"), encodeArgs(3));
 }
 
@@ -6020,7 +6017,6 @@ BOOST_AUTO_TEST_CASE(invalid_enum_as_external_arg)
 }
 
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(proper_order_of_overwriting_of_attributes, 2)
 BOOST_AUTO_TEST_CASE(proper_order_of_overwriting_of_attributes)
 {
 	// bug #1798
@@ -6206,7 +6202,6 @@ BOOST_AUTO_TEST_CASE(evm_exceptions_in_constructor_out_of_baund)
 	BOOST_CHECK(compileAndRunWithoutCheck(sourceCode, 0, "A") == bytes());
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(positive_integers_to_signed, 3)
 BOOST_AUTO_TEST_CASE(positive_integers_to_signed)
 {
 	char const* sourceCode = R"(
@@ -7218,7 +7213,6 @@ BOOST_AUTO_TEST_CASE(string_as_mapping_key)
 		), encodeArgs(u256(7 + i)));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(accessor_for_state_variable, 1)
 BOOST_AUTO_TEST_CASE(accessor_for_state_variable)
 {
 	char const* sourceCode = R"(
@@ -7231,7 +7225,6 @@ BOOST_AUTO_TEST_CASE(accessor_for_state_variable)
 	ABI_CHECK(callContractFunction("ticketPrice()"), encodeArgs(u256(500)));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(accessor_for_const_state_variable, 1)
 BOOST_AUTO_TEST_CASE(accessor_for_const_state_variable)
 {
 	char const* sourceCode = R"(
@@ -9271,7 +9264,7 @@ BOOST_AUTO_TEST_CASE(correctly_initialize_memory_array_in_constructor)
 	ABI_CHECK(callContractFunction("success()"), encodeArgs(u256(1)));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(return_does_not_skip_modifier, 2)
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(return_does_not_skip_modifier, 1)
 BOOST_AUTO_TEST_CASE(return_does_not_skip_modifier)
 {
 	char const* sourceCode = R"(
@@ -9292,7 +9285,6 @@ BOOST_AUTO_TEST_CASE(return_does_not_skip_modifier)
 	ABI_CHECK(callContractFunction("x()"), encodeArgs(u256(9)));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(break_in_modifier, 2)
 BOOST_AUTO_TEST_CASE(break_in_modifier)
 {
 	char const* sourceCode = R"(
@@ -9315,7 +9307,6 @@ BOOST_AUTO_TEST_CASE(break_in_modifier)
 	ABI_CHECK(callContractFunction("x()"), encodeArgs(u256(1)));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(stacked_return_with_modifiers, 2)
 BOOST_AUTO_TEST_CASE(stacked_return_with_modifiers)
 {
 	char const* sourceCode = R"(
@@ -9550,7 +9541,7 @@ BOOST_AUTO_TEST_CASE(payable_function_calls_library)
 	ABI_CHECK(callContractFunctionWithValue("f()", 27), encodeArgs(u256(7)));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(non_payable_throw, 6)
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(non_payable_throw, 7)
 BOOST_AUTO_TEST_CASE(non_payable_throw)
 {
 	char const* sourceCode = R"(
@@ -9860,7 +9851,6 @@ BOOST_AUTO_TEST_CASE(store_internal_unused_library_function_in_constructor)
 	ABI_CHECK(callContractFunction("t()"), encodeArgs(u256(7)));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(same_function_in_construction_and_runtime, 1)
 BOOST_AUTO_TEST_CASE(same_function_in_construction_and_runtime)
 {
 	char const* sourceCode = R"(
@@ -11242,7 +11232,6 @@ BOOST_AUTO_TEST_CASE(keccak256_assembly)
 	ABI_CHECK(callContractFunction("i()"), vector<bytes>(1, fromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(multi_modifiers, 2)
 BOOST_AUTO_TEST_CASE(multi_modifiers)
 {
 	// This triggered a bug in some version because the variable in the modifier was not
