@@ -85,6 +85,7 @@ void ExpressionCompiler::appendConstStateVariableAccessor(VariableDeclaration co
 
 void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& _varDecl)
 {
+/*
 	solAssert(!_varDecl.isConstant(), "");
 	CompilerContext::LocationSetter locationSetter(m_context, _varDecl);
 	FunctionType accessorType(_varDecl);
@@ -184,6 +185,7 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 		);
 	m_context << dupInstruction(retSizeOnStack + 1);
 	m_context.appendJump(eth::AssemblyItem::JumpType::OutOfFunction);
+*/
 }
 
 bool ExpressionCompiler::visit(Conditional const& _condition)
@@ -276,6 +278,7 @@ bool ExpressionCompiler::visit(Assignment const& _assignment)
 	return false;
 }
 
+/*
 bool ExpressionCompiler::visit(TupleExpression const& _tuple)
 {
 	if (_tuple.isInlineArray())
@@ -321,7 +324,7 @@ bool ExpressionCompiler::visit(TupleExpression const& _tuple)
 	}
 	return false;
 }
-/*
+
 bool ExpressionCompiler::visit(UnaryOperation const& _unaryOperation)
 {
 	CompilerContext::LocationSetter locationSetter(m_context, _unaryOperation);
@@ -438,7 +441,7 @@ bool ExpressionCompiler::visit(BinaryOperation const& _binaryOperation)
 	// do not visit the child nodes, we already did that explicitly
 	return false;
 }
-*/
+
 bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 {
 	CompilerContext::LocationSetter locationSetter(m_context, _functionCall);
@@ -1471,6 +1474,7 @@ bool ExpressionCompiler::visit(IndexAccess const& _indexAccess)
 
 	return false;
 }
+*/
 
 void ExpressionCompiler::endVisit(Identifier const& _identifier)
 {

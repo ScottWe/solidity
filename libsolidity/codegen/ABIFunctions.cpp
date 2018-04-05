@@ -881,6 +881,7 @@ string ABIFunctions::abiEncodingFunctionStruct(
 		u256 previousSlotOffset(-1);
 		u256 encodingOffset = 0;
 		vector<map<string, string>> members;
+/*
 		for (auto const& member: _to.members(nullptr))
 		{
 			solAssert(member.type, "");
@@ -951,6 +952,7 @@ string ABIFunctions::abiEncodingFunctionStruct(
 			members.back()["encode"] = memberTempl.render();
 			members.back()["memberName"] = member.name;
 		}
+*/
 		templ("members", members);
 		templ("headSize", toCompactHexWithPrefix(encodingOffset));
 		return templ.render();
@@ -1154,6 +1156,7 @@ string ABIFunctions::abiDecodingFunctionArray(ArrayType const& _type, bool _from
 				}
 			)"
 		);
+/*
 		templ("functionName", functionName);
 		templ("readableTypeName", _type.toString(true));
 		templ("retrieveLength", !_type.isDynamicallySized() ? toCompactHexWithPrefix(_type.length()) : load + "(offset)");
@@ -1163,6 +1166,7 @@ string ABIFunctions::abiDecodingFunctionArray(ArrayType const& _type, bool _from
 			templ("storeLength", "mstore(array, length) offset := add(offset, 0x20) dst := add(dst, 0x20)");
 		else
 			templ("storeLength", "");
+*/
 		if (dynamicBase)
 		{
 			templ("staticBoundsCheck", "");
@@ -1219,7 +1223,9 @@ string ABIFunctions::abiDecodingFunctionCalldataArray(ArrayType const& _type)
 		w("functionName", functionName);
 		w("readableTypeName", _type.toString(true));
 		w("baseEncodedSize", toCompactHexWithPrefix(_type.isByteArray() ? 1 : _type.baseType()->calldataEncodedSize()));
+/*
 		w("length", _type.isDynamicallyEncoded() ? "length" : toCompactHexWithPrefix(_type.length()));
+*/
 		return w.render();
 	});
 }
@@ -1284,8 +1290,10 @@ string ABIFunctions::abiDecodingFunctionStruct(StructType const& _type, bool _fr
 		templ("functionName", functionName);
 		templ("readableTypeName", _type.toString(true));
 		templ("allocate", allocationFunction());
+/*
 		solAssert(_type.memorySize() < u256("0xffffffffffffffff"), "");
 		templ("memorySize", toCompactHexWithPrefix(_type.memorySize()));
+*/
 		size_t headPos = 0;
 		vector<map<string, string>> members;
 		for (auto const& member: _type.members(nullptr))
@@ -1309,7 +1317,9 @@ string ABIFunctions::abiDecodingFunctionStruct(StructType const& _type, bool _fr
 			);
 			memberTempl("load", _fromMemory ? "mload" : "calldataload");
 			memberTempl("pos", to_string(headPos));
+/*
 			memberTempl("memoryOffset", toCompactHexWithPrefix(_type.memoryOffsetOfMember(member.name)));
+*/
 			memberTempl("abiDecode", abiDecodingFunction(*member.type, _fromMemory, false));
 
 			members.push_back({});
@@ -1460,6 +1470,7 @@ string ABIFunctions::arrayLengthFunction(ArrayType const& _type)
 		)");
 		w("functionName", functionName);
 		string body;
+/*
 		if (!_type.isDynamicallySized())
 			body = "length := " + toCompactHexWithPrefix(_type.length());
 		else
@@ -1490,6 +1501,7 @@ string ABIFunctions::arrayLengthFunction(ArrayType const& _type)
 				break;
 			}
 		}
+*/
 		solAssert(!body.empty(), "");
 		w("body", body);
 		return w.render();
