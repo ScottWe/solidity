@@ -1862,7 +1862,6 @@ BOOST_AUTO_TEST_CASE(blockhash_shadow_resolution)
 	ABI_CHECK(callContractFunction("f()"), encodeArgs(0));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(log0, 1)
 BOOST_AUTO_TEST_CASE(log0)
 {
 	char const* sourceCode = R"(
@@ -1880,7 +1879,6 @@ BOOST_AUTO_TEST_CASE(log0)
 	BOOST_CHECK_EQUAL(m_logs[0].topics.size(), 0);
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(log1, 1)
 BOOST_AUTO_TEST_CASE(log1)
 {
 	char const* sourceCode = R"(
@@ -1899,7 +1897,6 @@ BOOST_AUTO_TEST_CASE(log1)
 	BOOST_CHECK_EQUAL(m_logs[0].topics[0], h256(u256(2)));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(log2, 1)
 BOOST_AUTO_TEST_CASE(log2)
 {
 	char const* sourceCode = R"(
@@ -1919,7 +1916,6 @@ BOOST_AUTO_TEST_CASE(log2)
 		BOOST_CHECK_EQUAL(m_logs[0].topics[i], h256(u256(i + 2)));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(log3, 1)
 BOOST_AUTO_TEST_CASE(log3)
 {
 	char const* sourceCode = R"(
@@ -1939,7 +1935,6 @@ BOOST_AUTO_TEST_CASE(log3)
 		BOOST_CHECK_EQUAL(m_logs[0].topics[i], h256(u256(i + 2)));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(log4, 1)
 BOOST_AUTO_TEST_CASE(log4)
 {
 	char const* sourceCode = R"(
@@ -1959,7 +1954,6 @@ BOOST_AUTO_TEST_CASE(log4)
 		BOOST_CHECK_EQUAL(m_logs[0].topics[i], h256(u256(i + 2)));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(log_in_constructor, 1)
 BOOST_AUTO_TEST_CASE(log_in_constructor)
 {
 	char const* sourceCode = R"(
@@ -3171,7 +3165,6 @@ BOOST_AUTO_TEST_CASE(short_data_calls_fallback)
 	ABI_CHECK(callContractFunction("x()"), encodeArgs(3));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(event, 1)
 BOOST_AUTO_TEST_CASE(event)
 {
 	char const* sourceCode = R"(
@@ -3195,7 +3188,7 @@ BOOST_AUTO_TEST_CASE(event)
 		callContractFunctionWithValue("deposit(bytes32,bool)", value, id, manually);
 		BOOST_REQUIRE_EQUAL(m_logs.size(), 1);
 		BOOST_CHECK_EQUAL(m_logs[0].address, m_contractAddress);
-		BOOST_CHECK_EQUAL(h256(m_logs[0].data), h256(u256(value)));
+		BOOST_CHECK_EQUAL(h256(m_logs[0].data, h256::AlignRight), h256(u256(value)));
 		BOOST_REQUIRE_EQUAL(m_logs[0].topics.size(), 3);
 		BOOST_CHECK_EQUAL(m_logs[0].topics[0], dev::keccak256(string("Deposit(address,bytes32,uint256)")));
 		BOOST_CHECK_EQUAL(m_logs[0].topics[1], h256(m_sender, h256::AlignRight));
