@@ -5202,7 +5202,7 @@ BOOST_AUTO_TEST_CASE(inline_assembly_constant_variable_via_offset)
 	)";
 	CHECK_ERROR(text, TypeError, "Constant variables not supported by inline assembly.");
 }
-
+/*
 BOOST_AUTO_TEST_CASE(inline_assembly_calldata_variables)
 {
 	char const* text = R"(
@@ -5217,7 +5217,7 @@ BOOST_AUTO_TEST_CASE(inline_assembly_calldata_variables)
 	)";
 	CHECK_ERROR(text, TypeError, "Call data elements cannot be accessed directly.");
 }
-
+*/
 BOOST_AUTO_TEST_CASE(inline_assembly_050_literals_on_stack)
 {
 	char const* text = R"(

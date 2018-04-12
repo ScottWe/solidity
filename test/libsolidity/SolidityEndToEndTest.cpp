@@ -5003,7 +5003,6 @@ BOOST_AUTO_TEST_CASE(array_copy_storage_abi_signed)
 	));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(array_push, 1)
 BOOST_AUTO_TEST_CASE(array_push)
 {
 	char const* sourceCode = R"(
@@ -5192,7 +5191,7 @@ BOOST_AUTO_TEST_CASE(bytes_delete_element)
 	ABI_CHECK(callContractFunction("test1()"), encodeArgs(true));
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(array_copy_calldata_storage, 1)
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(array_copy_calldata_storage, 2)
 BOOST_AUTO_TEST_CASE(array_copy_calldata_storage)
 {
 	char const* sourceCode = R"(
