@@ -609,6 +609,8 @@ void TypeChecker::endVisit(UsingForDirective const& _usingFor)
 	);
 	if (!library || !library->isLibrary())
 		m_errorReporter.fatalTypeError(_usingFor.libraryName().location(), "Library name expected.");
+
+	m_scope->annotation().contractDependencies.insert(library);
 }
 
 bool TypeChecker::visit(StructDefinition const& _struct)
@@ -2176,6 +2178,11 @@ bool TypeChecker::visit(Identifier const& _identifier)
 	else if (dynamic_cast<MagicVariableDeclaration const*>(annotation.referencedDeclaration))
 		if (dynamic_cast<FunctionType const*>(annotation.type.get()))
 			annotation.isPure = true;
+
+	if (auto contract = dynamic_cast<ContractDefinition const*>(&dereference(_identifier)))
+		if (contract->isLibrary())
+			m_scope->annotation().contractDependencies.insert(contract);
+
 	return false;
 }
 
