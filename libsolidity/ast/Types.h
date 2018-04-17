@@ -219,6 +219,8 @@ public:
 	virtual bigint storageSize() const { return 1; }
 	/// @returns the number of memory slots required to hold this value in memory.
 	virtual bigint memorySize() const { return storageSize(); }
+	/// @returns true if the type contains a mapping with inifinite keyspace as a subtype.
+	virtual bool containsInfiniteMapping() const { return false; }
 	/// Multiple small types can be packed into a single storage slot. If such a packing is possible
 	/// this function @returns the size in bytes smaller than 32. Data is moved to the next slot if
 	/// it does not fit.
@@ -654,6 +656,7 @@ public:
 	virtual bigint getFixedBitwidth() const override;
 	virtual bigint storageSize() const override;
 	virtual bigint memorySize() const override;
+	virtual bool containsInfiniteMapping() const override;
 	virtual bool canLiveOutsideStorage() const override { return m_baseType->canLiveOutsideStorage(); }
 	virtual unsigned sizeOnStack() const override;
 	virtual std::string toString(bool _short) const override;
@@ -775,6 +778,7 @@ public:
 	virtual bigint getFixedBitwidth() const override;
 	virtual bigint memorySize() const override;
 	virtual bigint storageSize() const override;
+	virtual bool containsInfiniteMapping() const override;
 	virtual bool canLiveOutsideStorage() const override { return true; }
 	virtual std::string toString(bool _short) const override;
 
@@ -873,6 +877,7 @@ public:
 	virtual bool canBeStored() const override { return false; }
 	virtual bigint getFixedBitwidth() const override;
 	virtual bigint storageSize() const override;
+	virtual bool containsInfiniteMapping() const override;
 	virtual bool canLiveOutsideStorage() const override { return false; }
 	virtual unsigned sizeOnStack() const override;
 	virtual bool hasSimpleZeroValueInMemory() const override { return false; }
@@ -1131,14 +1136,12 @@ public:
 		return _inLibrary ? shared_from_this() : TypePointer();
 	}
 	virtual bool dataStoredIn(DataLocation _location) const override { return _location == DataLocation::Storage; }
-<<<<<<< HEAD
-	/// Cannot be stored in memory, but just in case.
-	virtual bool hasSimpleZeroValueInMemory() const override { solAssert(false, ""); }
-=======
-	//virtual bool isDynamicallyEncoded() const override;
-	//virtual bigint getFixedBitwidth() const override;
-	//virtual bigint storageSize() const override;
->>>>>>> 84dcb53... API for getting the bitwidth of types with fixed bitwidth representation (#98)
+	virtual bool isDynamicallyEncoded() const override;
+	virtual bigint getFixedBitwidth() const override;
+	virtual bigint storageSize() const override;
+	virtual bool containsInfiniteMapping() const override;
+	bool hasInfiniteKeyspace() const;
+	bool hasHashedKeyspace() const;
 
 	TypePointer const& keyType() const { return m_keyType; }
 	TypePointer const& valueType() const { return m_valueType; }
@@ -1166,6 +1169,7 @@ public:
 	virtual bool canBeStored() const override { return false; }
 	virtual bigint getFixedBitwidth() const override;
 	virtual bigint storageSize() const override;
+	virtual bool containsInfiniteMapping() const override;
 	virtual bool canLiveOutsideStorage() const override { return false; }
 	virtual unsigned sizeOnStack() const override;
 	virtual bool hasSimpleZeroValueInMemory() const override { solAssert(false, ""); }
@@ -1190,6 +1194,7 @@ public:
 	virtual bool canBeStored() const override { return false; }
 	virtual bigint getFixedBitwidth() const override;
 	virtual bigint storageSize() const override;
+	virtual bool containsInfiniteMapping() const override;
 	virtual bool canLiveOutsideStorage() const override { return false; }
 	virtual unsigned sizeOnStack() const override { return 0; }
 	virtual bool hasSimpleZeroValueInMemory() const override { solAssert(false, ""); }
