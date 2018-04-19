@@ -1597,7 +1597,9 @@ bigint ArrayType::memorySize() const
 	if (isDynamicallySized())
 		return 1;
 
-	return storageSize();
+	if (length() > MAX_ARRAY_SIZE)
+		BOOST_THROW_EXCEPTION(Error(Error::Type::TypeError) << errinfo_comment("Array too large."));
+	return length() * baseType()->memorySize();
 }
 
 bool ArrayType::containsInfiniteMapping() const {
