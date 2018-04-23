@@ -44,9 +44,11 @@ void SymbolicIntVariable::setZeroValue(int _seq)
 
 void SymbolicIntVariable::setUnknownValue(int _seq)
 {
-	auto const& intType = dynamic_cast<IntegerType const&>(*m_declaration.type());
-	m_interface.addAssertion(valueAtSequence(_seq) >= minValue(intType));
-	m_interface.addAssertion(valueAtSequence(_seq) <= maxValue(intType));
+	auto const& intType = dynamic_cast<IntegerType const&>(*m_declaration->type());
+	if (!intType.isUnbound() || !intType.isSigned())
+		m_interface.addAssertion(valueAtSequence(_seq) >= minValue(intType));
+	if (!intType.isUnbound())
+		m_interface.addAssertion(valueAtSequence(_seq) <= maxValue(intType));
 }
 
 smt::Expression SymbolicIntVariable::minValue(IntegerType const& _t)

@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_CASE(smoke_test)
 			}
 		})";
 	compileBothVersions(sourceCode);
-	compareVersions("f(uint256)", u256(7));
+	compareVersions("f(uint)", u256(7));
 }
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(identities, 1)
@@ -153,7 +153,7 @@ BOOST_AUTO_TEST_CASE(identities)
 			}
 		})";
 	compileBothVersions(sourceCode);
-	compareVersions("f(int256)", u256(0x12334664));
+	compareVersions("f(int)", u256(0x12334664));
 }
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(unused_expressions, 1)
@@ -184,7 +184,7 @@ BOOST_AUTO_TEST_CASE(constant_folding_both_sides)
 			}
 		})";
 	compileBothVersions(sourceCode);
-	compareVersions("f(uint256)", 7);
+	compareVersions("f(uint)", 7);
 }
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(storage_access, 1)
@@ -200,7 +200,7 @@ BOOST_AUTO_TEST_CASE(storage_access)
 		}
 	)";
 	compileBothVersions(sourceCode);
-	compareVersions("f(uint256)", 7);
+	compareVersions("f(uint)", 7);
 }
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(array_copy, 1)
@@ -221,9 +221,9 @@ BOOST_AUTO_TEST_CASE(array_copy)
 		}
 	)";
 	compileBothVersions(sourceCode);
-	compareVersions("f(uint256)", 0);
-	compareVersions("f(uint256)", 10);
-	compareVersions("f(uint256)", 35);
+	compareVersions("f(uint)", 0);
+	compareVersions("f(uint)", 10);
+	compareVersions("f(uint)", 35);
 }
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(function_calls, 1)
@@ -236,9 +236,9 @@ BOOST_AUTO_TEST_CASE(function_calls)
 		}
 	)";
 	compileBothVersions(sourceCode);
-	compareVersions("f(uint256)", 0);
-	compareVersions("f(uint256)", 10);
-	compareVersions("f(uint256)", 36);
+	compareVersions("f(uint)", 0);
+	compareVersions("f(uint)", 10);
+	compareVersions("f(uint)", 36);
 }
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(storage_write_in_loops, 1)
@@ -258,9 +258,9 @@ BOOST_AUTO_TEST_CASE(storage_write_in_loops)
 		}
 	)";
 	compileBothVersions(sourceCode);
-	compareVersions("f(uint256)", 0);
-	compareVersions("f(uint256)", 10);
-	compareVersions("f(uint256)", 36);
+	compareVersions("f(uint)", 0);
+	compareVersions("f(uint)", 10);
+	compareVersions("f(uint)", 36);
 }
 
 // Test disabled with https://github.com/ethereum/solidity/pull/762
@@ -288,9 +288,9 @@ BOOST_AUTO_TEST_CASE(retain_information_in_branches)
 		}
 	)";
 	compileBothVersions(sourceCode);
-	compareVersions("f(uint256,bytes32)", 0, "abc");
-	compareVersions("f(uint256,bytes32)", 8, "def");
-	compareVersions("f(uint256,bytes32)", 10, "ghi");
+	compareVersions("f(uint,bytes32)", 0, "abc");
+	compareVersions("f(uint,bytes32)", 8, "def");
+	compareVersions("f(uint,bytes32)", 10, "ghi");
 
 	bytes optimizedBytecode = compileAndRunWithOptimizer(sourceCode, 0, "c", true);
 	size_t numSHA3s = 0;
@@ -334,7 +334,7 @@ BOOST_AUTO_TEST_CASE(store_tags_as_unions)
 		}
 	)";
 	compileBothVersions(sourceCode);
-	compareVersions("f(uint256,bytes32)", 7, "abc");
+	compareVersions("f(uint,bytes32)", 7, "abc");
 
 	bytes optimizedBytecode = compileAndRunWithOptimizer(sourceCode, 0, "test", true);
 	size_t numSHA3s = 0;
@@ -587,7 +587,7 @@ BOOST_AUTO_TEST_CASE(invalid_state_at_control_flow_join)
 {
 	char const* sourceCode = R"(
 		contract Test {
-			uint256 public totalSupply = 100;
+			uint public totalSupply = 100;
 			function f() returns (uint r) {
 				if (false)
 					r = totalSupply;

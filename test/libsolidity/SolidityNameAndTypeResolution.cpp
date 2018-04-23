@@ -132,6 +132,12 @@ BOOST_AUTO_TEST_CASE(type_checking_return_wrong_type)
 		}
 	)";
 	CHECK_ERROR(text, TypeError, "Return argument type bool is not implicitly convertible to expected type (type of first return variable) uint256.");
+	text = R"(
+		contract test {
+			function f() public returns (uint r) { return 1 >= 2; }
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Return argument type bool is not implicitly convertible to expected type (type of first return variable) uint.");
 }
 
 BOOST_AUTO_TEST_CASE(type_checking_function_call)
@@ -140,6 +146,13 @@ BOOST_AUTO_TEST_CASE(type_checking_function_call)
 		contract test {
 			function f() public returns (bool) { return g(12, true) == 3; }
 			function g(uint256, bool) public returns (uint256) { }
+		}
+	)";
+	CHECK_SUCCESS(text);
+	text = R"(
+		contract test {
+			function f() public returns (bool) { return g(12, true) == 3; }
+			function g(uint, bool) public returns (uint) { }
 		}
 	)";
 	CHECK_SUCCESS(text);
@@ -170,6 +183,12 @@ BOOST_AUTO_TEST_CASE(type_inference_explicit_conversion)
 	char const* text = R"(
 		contract test {
 			function f() public returns (int256 r) { var x = int256(uint32(2)); return x; }
+		}
+	)";
+	CHECK_SUCCESS(text);
+	text = R"(
+		contract test {
+			function f() public returns (int r) { var x = int(uint32(2)); return x; }
 		}
 	)";
 	CHECK_SUCCESS(text);
@@ -425,7 +444,7 @@ BOOST_AUTO_TEST_CASE(function_canonical_signature)
 		}
 }
 
-BOOST_AUTO_TEST_CASE(function_canonical_signature_type_aliases)
+BOOST_AUTO_TEST_CASE(function_canonical_signature_no_type_aliases)
 {
 	SourceUnit const* sourceUnit = nullptr;
 	char const* text = R"(
@@ -442,7 +461,7 @@ BOOST_AUTO_TEST_CASE(function_canonical_signature_type_aliases)
 			auto functions = contract->definedFunctions();
 			if (functions.empty())
 				continue;
-			BOOST_CHECK_EQUAL("boo(uint256,bytes32,address)", functions[0]->externalSignature());
+			BOOST_CHECK_EQUAL("boo(uint,bytes32,address)", functions[0]->externalSignature());
 		}
 }
 
@@ -466,7 +485,7 @@ BOOST_AUTO_TEST_CASE(function_external_types)
 			auto functions = contract->definedFunctions();
 			if (functions.empty())
 				continue;
-			BOOST_CHECK_EQUAL("boo(uint256,bool,bytes8,bool[2],uint256[],address,address[])", functions[0]->externalSignature());
+			BOOST_CHECK_EQUAL("boo(uint,bool,bytes8,bool[2],uint[],address,address[])", functions[0]->externalSignature());
 		}
 }
 
@@ -514,10 +533,10 @@ BOOST_AUTO_TEST_CASE(external_structs)
 		{
 			auto functions = contract->definedFunctions();
 			BOOST_REQUIRE(!functions.empty());
-			BOOST_CHECK_EQUAL("f(uint8,uint256,())", functions[0]->externalSignature());
-			BOOST_CHECK_EQUAL("g(address,((bytes32,address,()[])[2][],uint256))", functions[1]->externalSignature());
+			BOOST_CHECK_EQUAL("f(uint8,uint,())", functions[0]->externalSignature());
+			BOOST_CHECK_EQUAL("g(address,((bytes32,address,()[])[2][],uint))", functions[1]->externalSignature());
 			BOOST_CHECK_EQUAL("h(function[])", functions[2]->externalSignature());
-			BOOST_CHECK_EQUAL("i(((bytes32,address,()[])[2][],uint256)[])", functions[3]->externalSignature());
+			BOOST_CHECK_EQUAL("i(((bytes32,address,()[])[2][],uint)[])", functions[3]->externalSignature());
 		}
 }
 
@@ -542,7 +561,7 @@ BOOST_AUTO_TEST_CASE(external_structs_in_libraries)
 		{
 			auto functions = contract->definedFunctions();
 			BOOST_REQUIRE(!functions.empty());
-			BOOST_CHECK_EQUAL("f(Test.ActionChoices,uint256,Test.Empty)", functions[0]->externalSignature());
+			BOOST_CHECK_EQUAL("f(Test.ActionChoices,uint,Test.Empty)", functions[0]->externalSignature());
 			BOOST_CHECK_EQUAL("g(Test,Test.Nested)", functions[1]->externalSignature());
 			BOOST_CHECK_EQUAL("h(function[])", functions[2]->externalSignature());
 			BOOST_CHECK_EQUAL("i(Test.Nested[])", functions[3]->externalSignature());
@@ -916,6 +935,146 @@ BOOST_AUTO_TEST_CASE(super_excludes_current_contract)
 	CHECK_ERROR(text, TypeError, "Member \"f\" not found or not visible after argument-dependent lookup in contract super B");
 }
 
+BOOST_AUTO_TEST_CASE(function_modifier_invocation)
+{
+	char const* text = R"(
+		contract B {
+			function f() mod1(2, true) mod2("0123456") pure public { }
+			modifier mod1(uint a, bool b) { if (b) _; }
+			modifier mod2(bytes7 a) { while (a == "1234567") _; }
+		}
+	)";
+	CHECK_SUCCESS(text);
+}
+
+BOOST_AUTO_TEST_CASE(invalid_function_modifier_type)
+{
+	char const* text = R"(
+		contract B {
+			function f() mod1(true) public { }
+			modifier mod1(uint256 a) { if (a > 0) _; }
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Invalid type for argument in modifier invocation. Invalid implicit conversion from bool to uint256 requested.");
+	text = R"(
+		contract B {
+			function f() mod1(true) public { }
+			modifier mod1(uint a) { if (a > 0) _; }
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Invalid type for argument in modifier invocation. Invalid implicit conversion from bool to uint requested.");
+}
+
+BOOST_AUTO_TEST_CASE(function_modifier_invocation_parameters)
+{
+	char const* text = R"(
+		contract B {
+			function f(uint8 a) mod1(a, true) mod2(r) public returns (bytes7 r) { }
+			modifier mod1(uint a, bool b) { if (b) _; }
+			modifier mod2(bytes7 a) { while (a == "1234567") _; }
+		}
+	)";
+	CHECK_SUCCESS(text);
+}
+
+BOOST_AUTO_TEST_CASE(function_modifier_invocation_local_variables)
+{
+	char const* text = R"(
+		contract B {
+			function f() mod(x) pure public { uint x = 7; }
+			modifier mod(uint a) { if (a > 0) _; }
+		}
+	)";
+	CHECK_SUCCESS_NO_WARNINGS(text);
+}
+
+BOOST_AUTO_TEST_CASE(function_modifier_invocation_local_variables050)
+{
+	char const* text = R"(
+		pragma experimental "v0.5.0";
+		contract B {
+			function f() mod(x) pure public { uint x = 7; }
+			modifier mod(uint a) { if (a > 0) _; }
+		}
+	)";
+	CHECK_ERROR(text, DeclarationError, "Undeclared identifier.");
+}
+
+BOOST_AUTO_TEST_CASE(function_modifier_double_invocation)
+{
+	char const* text = R"(
+		contract B {
+			function f(uint x) mod(x) mod(2) public { }
+			modifier mod(uint a) { if (a > 0) _; }
+		}
+	)";
+	CHECK_SUCCESS(text);
+}
+
+BOOST_AUTO_TEST_CASE(base_constructor_double_invocation)
+{
+	char const* text = R"(
+		contract C { function C(uint a) public {} }
+		contract B is C {
+			function B() C(2) C(2) public {}
+		}
+	)";
+	CHECK_ERROR(text, DeclarationError, "Base constructor already provided");
+}
+
+BOOST_AUTO_TEST_CASE(legal_modifier_override)
+{
+	char const* text = R"(
+		contract A { modifier mod(uint a) { _; } }
+		contract B is A { modifier mod(uint a) { _; } }
+	)";
+	CHECK_SUCCESS(text);
+}
+
+BOOST_AUTO_TEST_CASE(illegal_modifier_override)
+{
+	char const* text = R"(
+		contract A { modifier mod(uint a) { _; } }
+		contract B is A { modifier mod(uint8 a) { _; } }
+	)";
+	CHECK_ERROR(text, TypeError, "Override changes modifier signature.");
+}
+
+BOOST_AUTO_TEST_CASE(modifier_overrides_function)
+{
+	char const* text = R"(
+		contract A { modifier mod(uint a) { _; } }
+		contract B is A { function mod(uint a) public { } }
+	)";
+	CHECK_ALLOW_MULTI(text, (vector<pair<Error::Type, string>>{
+		{Error::Type::DeclarationError, "Identifier already declared"},
+		{Error::Type::TypeError, "Override changes modifier to function"}
+	}));
+}
+
+BOOST_AUTO_TEST_CASE(function_overrides_modifier)
+{
+	char const* text = R"(
+		contract A { function mod(uint a) public { } }
+		contract B is A { modifier mod(uint a) { _; } }
+	)";
+	CHECK_ALLOW_MULTI(text, (vector<pair<Error::Type, string>>{
+		{Error::Type::DeclarationError, "Identifier already declared"},
+		{Error::Type::TypeError, "Override changes function to modifier"}
+	}));
+}
+
+BOOST_AUTO_TEST_CASE(modifier_returns_value)
+{
+	char const* text = R"(
+		contract A {
+			function f(uint a) mod(2) public returns (uint r) { }
+			modifier mod(uint a) { _; return 7; }
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Return arguments not allowed.");
+}
+
 BOOST_AUTO_TEST_CASE(state_variable_accessors)
 {
 	char const* text = R"(
@@ -939,19 +1098,19 @@ BOOST_AUTO_TEST_CASE(state_variable_accessors)
 	BOOST_CHECK_EQUAL(returnParams.at(0)->canonicalName(), "uint256");
 	BOOST_CHECK(function->stateMutability() == StateMutability::View);
 
-	function = retrieveFunctionBySignature(*contract, "map(uint256)");
+	function = retrieveFunctionBySignature(*contract, "map(uint)");
 	BOOST_REQUIRE(function && function->hasDeclaration());
 	auto params = function->parameterTypes();
-	BOOST_CHECK_EQUAL(params.at(0)->canonicalName(), "uint256");
+	BOOST_CHECK_EQUAL(params.at(0)->canonicalName(), "uint");
 	returnParams = function->returnParameterTypes();
 	BOOST_CHECK_EQUAL(returnParams.at(0)->canonicalName(), "bytes4");
 	BOOST_CHECK(function->stateMutability() == StateMutability::View);
 
-	function = retrieveFunctionBySignature(*contract, "multiple_map(uint256,uint256)");
+	function = retrieveFunctionBySignature(*contract, "multiple_map(uint,uint)");
 	BOOST_REQUIRE(function && function->hasDeclaration());
 	params = function->parameterTypes();
-	BOOST_CHECK_EQUAL(params.at(0)->canonicalName(), "uint256");
-	BOOST_CHECK_EQUAL(params.at(1)->canonicalName(), "uint256");
+	BOOST_CHECK_EQUAL(params.at(0)->canonicalName(), "uint");
+	BOOST_CHECK_EQUAL(params.at(1)->canonicalName(), "uint");
 	returnParams = function->returnParameterTypes();
 	BOOST_CHECK_EQUAL(returnParams.at(0)->canonicalName(), "bytes4");
 	BOOST_CHECK(function->stateMutability() == StateMutability::View);
@@ -1547,6 +1706,15 @@ BOOST_AUTO_TEST_CASE(overflow_caused_by_ether_units)
 		}
 	)";
 	CHECK_ERROR(sourceCode, TypeError, "Type int_const 1157...(70 digits omitted)...0000 is not implicitly convertible to expected type uint256.");
+	sourceCodeFine = R"(
+		contract c {
+			function c () public {
+				 a = 115792089237316195423570985008687907853269984665640564039458 ether;
+			}
+			uint a;
+		}
+	)";
+	CHECK_SUCCESS(sourceCodeFine);
 }
 
 BOOST_AUTO_TEST_CASE(exp_operator_exponent_too_big)
@@ -1677,6 +1845,30 @@ BOOST_AUTO_TEST_CASE(warn_var_from_zero)
 		"uint8, which can hold",
 		"Use of the \"var\" keyword is deprecated."
 	}));
+	sourceCode = R"(
+		contract test {
+			function f() pure public {
+				var i = -0x8000000000000000000000000000000000000000000000000000000000000001;
+				i;
+			}
+		}
+	)";
+	CHECK_WARNING_ALLOW_MULTI(sourceCode, (std::vector<std::string>{
+		"int, which can hold any integer value",
+		"Use of the \"var\" keyword is deprecated."
+	}));
+	sourceCode = R"(
+		contract test {
+			function f() pure public {
+				var i = 0x10000000000000000000000000000000000000000000000000000000000000000;
+				i;
+			}
+		}
+	)";
+	CHECK_WARNING_ALLOW_MULTI(sourceCode, (std::vector<std::string>{
+		"uint, which can hold any non-negative integer value",
+		"Use of the \"var\" keyword is deprecated."
+	}));
 }
 
 BOOST_AUTO_TEST_CASE(enum_member_access)
@@ -1751,6 +1943,18 @@ BOOST_AUTO_TEST_CASE(enum_explicit_conversion_is_okay)
 		}
 	)";
 	CHECK_SUCCESS(text);
+	text = R"(
+		contract test {
+			enum ActionChoices { GoLeft, GoRight, GoStraight, Sit }
+			function test() public {
+				a = uint(ActionChoices.GoStraight);
+				b = uint64(ActionChoices.Sit);
+			}
+			uint a;
+			uint64 b;
+		}
+	)";
+	CHECK_SUCCESS(text);
 }
 
 BOOST_AUTO_TEST_CASE(int_to_enum_explicit_conversion_is_okay)
@@ -1763,6 +1967,18 @@ BOOST_AUTO_TEST_CASE(int_to_enum_explicit_conversion_is_okay)
 				b = ActionChoices(a);
 			}
 			uint256 a;
+			ActionChoices b;
+		}
+	)";
+	CHECK_SUCCESS(text);
+	text = R"(
+		contract test {
+			enum ActionChoices { GoLeft, GoRight, GoStraight, Sit }
+			function test() public {
+				a = 2;
+				b = ActionChoices(a);
+			}
+			uint a;
 			ActionChoices b;
 		}
 	)";
@@ -1781,6 +1997,16 @@ BOOST_AUTO_TEST_CASE(enum_implicit_conversion_is_not_okay_256)
 		}
 	)";
 	CHECK_ERROR(text, TypeError, "Type enum test.ActionChoices is not implicitly convertible to expected type uint256.");
+	text = R"(
+		contract test {
+			enum ActionChoices { GoLeft, GoRight, GoStraight, Sit }
+			function test() public {
+				a = ActionChoices.GoStraight;
+			}
+			uint a;
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Type enum test.ActionChoices is not implicitly convertible to expected type uint.");
 }
 
 BOOST_AUTO_TEST_CASE(enum_implicit_conversion_is_not_okay_64)
@@ -2043,11 +2269,19 @@ BOOST_AUTO_TEST_CASE(array_copy_with_different_types1)
 	char const* text = R"(
 		contract c {
 			bytes a;
-			uint[] b;
+			uint256[] b;
 			function f() public { b = a; }
 		}
 	)";
 	CHECK_ERROR(text, TypeError, "Type bytes storage ref is not implicitly convertible to expected type uint256[] storage ref.");
+	text = R"(
+		contract c {
+			bytes a;
+			uint[] b;
+			function f() public { b = a; }
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Type bytes storage ref is not implicitly convertible to expected type uint[] storage ref.");
 }
 
 BOOST_AUTO_TEST_CASE(array_copy_with_different_types2)
@@ -2090,12 +2324,20 @@ BOOST_AUTO_TEST_CASE(array_copy_with_different_types_dynamic_static)
 {
 	char const* text = R"(
 		contract c {
+			uint256[] a;
+			uint256[80] b;
+			function f() public { b = a; }
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Type uint256[] storage ref is not implicitly convertible to expected type uint256[80] storage ref.");
+	text = R"(
+		contract c {
 			uint[] a;
 			uint[80] b;
 			function f() public { b = a; }
 		}
 	)";
-	CHECK_ERROR(text, TypeError, "Type uint256[] storage ref is not implicitly convertible to expected type uint256[80] storage ref.");
+	CHECK_ERROR(text, TypeError, "Type uint[] storage ref is not implicitly convertible to expected type uint[80] storage ref.");
 }
 
 BOOST_AUTO_TEST_CASE(array_of_undeclared_type)
@@ -2122,16 +2364,22 @@ BOOST_AUTO_TEST_CASE(storage_variable_initialization_with_incorrect_type_string)
 {
 	char const* text = R"(
 		contract c {
-			uint a = "abc";
+			uint256 a = "abc";
 		}
 	)";
 	CHECK_ERROR(text, TypeError, "Type literal_string \"abc\" is not implicitly convertible to expected type uint256.");
+	text = R"(
+		contract c {
+			uint a = "abc";
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Type literal_string \"abc\" is not implicitly convertible to expected type uint.");
 }
 
 BOOST_AUTO_TEST_CASE(test_fromElementaryTypeName)
 {
 
-	BOOST_CHECK(*Type::fromElementaryTypeName(ElementaryTypeNameToken(Token::Int, 0, 0)) == *make_shared<IntegerType>(256, IntegerType::Modifier::Signed));
+	BOOST_CHECK(*Type::fromElementaryTypeName(ElementaryTypeNameToken(Token::Int, 0, 0)) == *make_shared<IntegerType>(IntegerType::Modifier::Signed));
 	BOOST_CHECK(*Type::fromElementaryTypeName(ElementaryTypeNameToken(Token::IntM, 8, 0)) == *make_shared<IntegerType>(8, IntegerType::Modifier::Signed));
 	BOOST_CHECK(*Type::fromElementaryTypeName(ElementaryTypeNameToken(Token::IntM, 16, 0)) == *make_shared<IntegerType>(16, IntegerType::Modifier::Signed));
 	BOOST_CHECK(*Type::fromElementaryTypeName(ElementaryTypeNameToken(Token::IntM, 24, 0)) == *make_shared<IntegerType>(24, IntegerType::Modifier::Signed));
@@ -2165,7 +2413,7 @@ BOOST_AUTO_TEST_CASE(test_fromElementaryTypeName)
 	BOOST_CHECK(*Type::fromElementaryTypeName(ElementaryTypeNameToken(Token::IntM, 248, 0)) == *make_shared<IntegerType>(248, IntegerType::Modifier::Signed));
 	BOOST_CHECK(*Type::fromElementaryTypeName(ElementaryTypeNameToken(Token::IntM, 256, 0)) == *make_shared<IntegerType>(256, IntegerType::Modifier::Signed));
 
-	BOOST_CHECK(*Type::fromElementaryTypeName(ElementaryTypeNameToken(Token::UInt, 0, 0)) == *make_shared<IntegerType>(256, IntegerType::Modifier::Unsigned));
+	BOOST_CHECK(*Type::fromElementaryTypeName(ElementaryTypeNameToken(Token::UInt, 0, 0)) == *make_shared<IntegerType>(IntegerType::Modifier::Unsigned));
 	BOOST_CHECK(*Type::fromElementaryTypeName(ElementaryTypeNameToken(Token::UIntM, 8, 0)) == *make_shared<IntegerType>(8, IntegerType::Modifier::Unsigned));
 	BOOST_CHECK(*Type::fromElementaryTypeName(ElementaryTypeNameToken(Token::UIntM, 16, 0)) == *make_shared<IntegerType>(16, IntegerType::Modifier::Unsigned));
 	BOOST_CHECK(*Type::fromElementaryTypeName(ElementaryTypeNameToken(Token::UIntM, 24, 0)) == *make_shared<IntegerType>(24, IntegerType::Modifier::Unsigned));
@@ -2678,33 +2926,57 @@ BOOST_AUTO_TEST_CASE(positive_integers_to_unsigned_out_of_bound)
 BOOST_AUTO_TEST_CASE(integer_boolean_operators)
 {
 	char const* sourceCode1 = R"(
-		contract test { function() public { uint x = 1; uint y = 2; x || y; } }
+		contract test { function() public { uint256 x = 1; uint256 y = 2; x || y; } }
 	)";
 	CHECK_ERROR(sourceCode1, TypeError, "Operator || not compatible with types uint256 and uint256");
+	sourceCode1 = R"(
+		contract test { function() public { uint x = 1; uint y = 2; x || y; } }
+	)";
+	CHECK_ERROR(sourceCode1, TypeError, "Operator || not compatible with types uint and uint");
 	char const* sourceCode2 = R"(
-		contract test { function() public { uint x = 1; uint y = 2; x && y; } }
+		contract test { function() public { uint256 x = 1; uint256 y = 2; x && y; } }
 	)";
 	CHECK_ERROR(sourceCode2, TypeError, "Operator && not compatible with types uint256 and uint256");
+	sourceCode2 = R"(
+		contract test { function() public { uint x = 1; uint y = 2; x && y; } }
+	)";
+	CHECK_ERROR(sourceCode2, TypeError, "Operator && not compatible with types uint and uint");
 	char const* sourceCode3 = R"(
-		contract test { function() public { uint x = 1; !x; } }
+		contract test { function() public { uint256 x = 1; !x; } }
 	)";
 	CHECK_ERROR(sourceCode3, TypeError, "Unary operator ! cannot be applied to type uint256");
+	sourceCode3 = R"(
+		contract test { function() public { uint x = 1; !x; } }
+	)";
+	CHECK_ERROR(sourceCode3, TypeError, "Unary operator ! cannot be applied to type uint");
 }
 
 BOOST_AUTO_TEST_CASE(exp_signed_variable)
 {
 	char const* sourceCode1 = R"(
-		contract test { function() public { uint x = 3; int y = -4; x ** y; } }
+		contract test { function() public { uint256 x = 3; int256 y = -4; x ** y; } }
 	)";
 	CHECK_ERROR(sourceCode1, TypeError, "Operator ** not compatible with types uint256 and int256");
+	sourceCode1 = R"(
+		contract test { function() public { uint x = 3; int y = -4; x ** y; } }
+	)";
+	CHECK_ERROR(sourceCode1, TypeError, "Operator ** not compatible with types uint and int");
 	char const* sourceCode2 = R"(
-		contract test { function() public { uint x = 3; int y = -4; y ** x; } }
+		contract test { function() public { uint256 x = 3; int256 y = -4; y ** x; } }
 	)";
 	CHECK_ERROR(sourceCode2, TypeError, "Operator ** not compatible with types int256 and uint256");
+	sourceCode2 = R"(
+		contract test { function() public { uint x = 3; int y = -4; y ** x; } }
+	)";
+	CHECK_ERROR(sourceCode2, TypeError, "Operator ** not compatible with types int and uint");
 	char const* sourceCode3 = R"(
-		contract test { function() public { int x = -3; int y = -4; x ** y; } }
+		contract test { function() public { int256 x = -3; int256 y = -4; x ** y; } }
 	)";
 	CHECK_ERROR(sourceCode3, TypeError, "Operator ** not compatible with types int256 and int256");
+	sourceCode3 = R"(
+		contract test { function() public { int x = -3; int y = -4; x ** y; } }
+	)";
+	CHECK_ERROR(sourceCode3, TypeError, "Operator ** not compatible with types int and int");
 }
 
 BOOST_AUTO_TEST_CASE(reference_compare_operators)
@@ -2763,7 +3035,7 @@ BOOST_AUTO_TEST_CASE(no_mappings_in_memory_array)
 			}
 		}
 	)";
-	CHECK_ERROR(sourceCode, TypeError, "Type mapping(uint256 => uint256)[] memory is only valid in storage.");
+	CHECK_ERROR(sourceCode, TypeError, "Type mapping(uint => uint)[] memory is only valid in storage.");
 }
 
 BOOST_AUTO_TEST_CASE(assignment_mem_to_local_storage_variable)
@@ -2777,7 +3049,7 @@ BOOST_AUTO_TEST_CASE(assignment_mem_to_local_storage_variable)
 			}
 		}
 	)";
-	CHECK_ERROR(sourceCode, TypeError, "Type uint256[] memory is not implicitly convertible to expected type uint256[] storage pointer.");
+	CHECK_ERROR(sourceCode, TypeError, "Type uint[] memory is not implicitly convertible to expected type uint[] storage pointer.");
 }
 
 BOOST_AUTO_TEST_CASE(storage_assign_to_different_local_variable)
@@ -2794,7 +3066,7 @@ BOOST_AUTO_TEST_CASE(storage_assign_to_different_local_variable)
 			}
 		}
 	)";
-	CHECK_ERROR(sourceCode, TypeError, "Type uint8[] storage pointer is not implicitly convertible to expected type uint256[] storage pointer.");
+	CHECK_ERROR(sourceCode, TypeError, "Type uint8[] storage pointer is not implicitly convertible to expected type uint[] storage pointer.");
 }
 
 BOOST_AUTO_TEST_CASE(uninitialized_mapping_variable)
@@ -2848,7 +3120,7 @@ BOOST_AUTO_TEST_CASE(no_delete_on_storage_pointers)
 			}
 		}
 	)";
-	CHECK_ERROR(sourceCode, TypeError, "Unary operator delete cannot be applied to type uint256[] storage pointer");
+	CHECK_ERROR(sourceCode, TypeError, "Unary operator delete cannot be applied to type uint[] storage pointer");
 }
 
 BOOST_AUTO_TEST_CASE(assignment_mem_storage_variable_directly)
@@ -2875,7 +3147,7 @@ BOOST_AUTO_TEST_CASE(function_argument_mem_to_storage)
 			}
 		}
 	)";
-	CHECK_ERROR(sourceCode, TypeError, "Invalid type for argument in function call. Invalid implicit conversion from uint256[] memory to uint256[] storage pointer requested.");
+	CHECK_ERROR(sourceCode, TypeError, "Invalid type for argument in function call. Invalid implicit conversion from uint[] memory to uint[] storage pointer requested.");
 }
 
 BOOST_AUTO_TEST_CASE(function_argument_storage_to_mem)
@@ -2900,11 +3172,19 @@ BOOST_AUTO_TEST_CASE(mem_array_assignment_changes_base_type)
 	char const* sourceCode = R"(
 		contract C {
 			function f(uint8[] memory x) private {
-				uint[] memory y = x;
+				uint256[] memory y = x;
 			}
 		}
 	)";
 	CHECK_ERROR(sourceCode, TypeError, "Type uint8[] memory is not implicitly convertible to expected type uint256[] memory.");
+	sourceCode = R"(
+		contract C {
+			function f(uint8[] memory x) private {
+				uint[] memory y = x;
+			}
+		}
+	)";
+	CHECK_ERROR(sourceCode, TypeError, "Type uint8[] memory is not implicitly convertible to expected type uint[] memory.");
 }
 
 BOOST_AUTO_TEST_CASE(dynamic_return_types_not_possible)
@@ -3137,7 +3417,7 @@ BOOST_AUTO_TEST_CASE(keccak256_with_large_integer_constant)
 			function f() public { keccak256(2**500); }
 		}
 	)";
-	CHECK_ERROR(text, TypeError, "Invalid rational number (too large or division by zero).");
+	CHECK_SUCCESS(text);
 }
 
 BOOST_AUTO_TEST_CASE(cyclic_binary_dependency)
@@ -3438,7 +3718,7 @@ BOOST_AUTO_TEST_CASE(using_for_mismatch)
 			}
 		}
 	)";
-	CHECK_ERROR(text, TypeError, "Member \"double\" not found or not visible after argument-dependent lookup in uint256");
+	CHECK_ERROR(text, TypeError, "Member \"double\" not found or not visible after argument-dependent lookup in uint");
 }
 
 BOOST_AUTO_TEST_CASE(using_for_not_used)
@@ -3481,7 +3761,7 @@ BOOST_AUTO_TEST_CASE(using_for_arbitrary_mismatch)
 			}
 		}
 	)";
-	CHECK_ERROR(text, TypeError, "Member \"double\" not found or not visible after argument-dependent lookup in uint256");
+	CHECK_ERROR(text, TypeError, "Member \"double\" not found or not visible after argument-dependent lookup in uint");
 }
 
 BOOST_AUTO_TEST_CASE(bound_function_in_var)
@@ -4193,12 +4473,22 @@ BOOST_AUTO_TEST_CASE(invalid_int_implicit_conversion_from_fixed)
 		contract test {
 			function f() public {
 				fixed a = 4.5;
+				int256 b = a;
+				a; b;
+			}
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Type fixed128x19 is not implicitly convertible to expected type int256");
+	text = R"(
+		contract test {
+			function f() public {
+				fixed a = 4.5;
 				int b = a;
 				a; b;
 			}
 		}
 	)";
-	CHECK_ERROR(text, TypeError, "Type fixed128x18 is not implicitly convertible to expected type int256");
+	CHECK_ERROR(text, TypeError, "Type fixed128x19 is not implicitly convertible to expected type int");
 }
 
 BOOST_AUTO_TEST_CASE(rational_unary_operation)
@@ -4467,7 +4757,7 @@ BOOST_AUTO_TEST_CASE(rational_index_access)
 			}
 		}
 	)";
-	CHECK_ERROR(text, TypeError, "rational_const 1 / 2 is not implicitly convertible to expected type uint256");
+	CHECK_ERROR(text, TypeError, "rational_const 1 / 2 is not implicitly convertible to expected type uint");
 }
 
 BOOST_AUTO_TEST_CASE(rational_to_fixed_literal_expression)
@@ -4678,11 +4968,19 @@ BOOST_AUTO_TEST_CASE(one_divided_by_three_integer_conversion)
 	char const* text = R"(
 		contract test {
 			function f() public {
-				uint a = 1/3;
+				uint256 a = 1/3;
 			}
 		}
 	)";
 	CHECK_ERROR(text, TypeError, "is not implicitly convertible to expected type uint256. Try converting to type ufixed256x77");
+	text = R"(
+		contract test {
+			function f() public {
+				uint a = 1/3;
+			}
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "is not implicitly convertible to expected type uint. Try converting to type ufixed256x77");
 }
 
 BOOST_AUTO_TEST_CASE(unused_return_value)
@@ -5050,7 +5348,7 @@ BOOST_AUTO_TEST_CASE(inline_assembly_unbalanced_two_stack_load)
 			}
 		}
 	)";
-	CHECK_ERROR(text, TypeError, "Only local variables are supported. To access storage variables,");
+	CHECK_ERROR(text, TypeError, "Member \"value\" not found or not visible after argument-dependent lookup in function (uint) external returns (uint) - did you forget the \"payable\" modifier?");
 }
 
 BOOST_AUTO_TEST_CASE(inline_assembly_in_modifier)
@@ -5394,7 +5692,7 @@ BOOST_AUTO_TEST_CASE(inline_assembly_leave_items_on_stack)
 	}));
 }
 
-BOOST_AUTO_TEST_CASE(invalid_mobile_type)
+BOOST_AUTO_TEST_CASE(rational_with_uint_mobile_type)
 {
 	char const* text = R"(
 			contract C {
@@ -5404,7 +5702,7 @@ BOOST_AUTO_TEST_CASE(invalid_mobile_type)
 				}
 			}
 	)";
-	CHECK_ERROR(text, TypeError, "Invalid rational number.");
+	CHECK_SUCCESS(text);
 }
 
 BOOST_AUTO_TEST_CASE(warns_msg_value_in_non_payable_public_function)
@@ -6930,7 +7228,7 @@ BOOST_AUTO_TEST_CASE(invalid_literal_in_tuple)
 			}
 		}
 	)";
-	CHECK_ERROR(text, TypeError, "Invalid rational number.");
+	CHECK_SUCCESS(text);
 	text = R"(
 		contract C {
 			function f() pure public {
@@ -6939,7 +7237,7 @@ BOOST_AUTO_TEST_CASE(invalid_literal_in_tuple)
 			}
 		}
 	)";
-	CHECK_ERROR(text, TypeError, "Invalid rational number.");
+	CHECK_SUCCESS(text);
 	text = R"(
 		contract C {
 			function f() pure public {
@@ -6947,7 +7245,7 @@ BOOST_AUTO_TEST_CASE(invalid_literal_in_tuple)
 			}
 		}
 	)";
-	CHECK_ERROR(text, TypeError, "Invalid rational number.");
+	CHECK_SUCCESS(text);
 	text = R"(
 		contract C {
 			function f() pure public {
@@ -7004,6 +7302,171 @@ BOOST_AUTO_TEST_CASE(address_overload_resolution)
 		}
 	)";
 	CHECK_SUCCESS(text);
+}
+
+BOOST_AUTO_TEST_CASE(array_length_too_large_for_uint256)
+{
+	char const* text = R"(
+		contract C {
+			uint[8**90] ids;
+		}
+	)";
+	CHECK_SUCCESS(text);
+}
+
+BOOST_AUTO_TEST_CASE(array_length_not_convertible_to_integer)
+{
+	char const* text = R"(
+		contract C {
+			uint[true] ids;
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Invalid array length, expected integer literal or constant expression.");
+}
+
+BOOST_AUTO_TEST_CASE(array_length_constant_var)
+{
+	char const* text = R"(
+		contract C {
+			uint constant LEN = 10;
+			uint[LEN] ids;
+		}
+	)";
+	CHECK_SUCCESS(text);
+}
+
+BOOST_AUTO_TEST_CASE(array_length_non_integer_constant_var)
+{
+	char const* text = R"(
+		contract C {
+			bool constant LEN = true;
+			uint[LEN] ids;
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Invalid array length, expected integer literal or constant expression.");
+}
+
+BOOST_AUTO_TEST_CASE(array_length_cannot_be_function)
+{
+	char const* text = R"(
+		contract C {
+			function f() {}
+			uint[f] ids;
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Invalid array length, expected integer literal or constant expression.");
+}
+
+BOOST_AUTO_TEST_CASE(array_length_can_be_recursive_constant)
+{
+	char const* text = R"(
+		contract C {
+			uint constant L = 5;
+			uint constant LEN = L + 4 * L;
+			uint[LEN] ids;
+		}
+	)";
+	CHECK_SUCCESS(text);
+}
+
+BOOST_AUTO_TEST_CASE(array_length_cannot_be_function_call)
+{
+	char const* text = R"(
+		contract C {
+			function f(uint x) {}
+			uint constant LEN = f();
+			uint[LEN] ids;
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Invalid array length, expected integer literal or constant expression.");
+}
+
+BOOST_AUTO_TEST_CASE(array_length_const_cannot_be_fractional)
+{
+	char const* text = R"(
+		contract C {
+			fixed constant L = 10.5;
+			uint[L] ids;
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Array with fractional length specified");
+}
+
+BOOST_AUTO_TEST_CASE(array_length_can_be_constant_in_struct)
+{
+	char const* text = R"(
+		contract C {
+			uint constant LEN = 10;
+			struct Test {
+				uint[LEN] ids;
+			}
+		}
+	)";
+	CHECK_SUCCESS(text);
+}
+
+BOOST_AUTO_TEST_CASE(array_length_can_be_constant_in_function)
+{
+	char const* text = R"(
+		contract C {
+			uint constant LEN = 10;
+			function f() {
+				uint[LEN] a;
+			}
+		}
+	)";
+	CHECK_SUCCESS(text);
+}
+
+BOOST_AUTO_TEST_CASE(array_length_cannot_be_constant_function_parameter)
+{
+	char const* text = R"(
+		contract C {
+			function f(uint constant LEN) {
+				uint[LEN] a;
+			}
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Invalid array length, expected integer literal or constant expression.");
+}
+
+BOOST_AUTO_TEST_CASE(array_length_with_cyclic_constant)
+{
+	char const* text = R"(
+		contract C {
+			uint constant LEN = LEN;
+			function f() {
+				uint[LEN] a;
+			}
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Cyclic constant definition (or maximum recursion depth exhausted).");
+}
+
+BOOST_AUTO_TEST_CASE(array_length_with_complex_cyclic_constant)
+{
+	char const* text = R"(
+		contract C {
+			uint constant L2 = LEN - 10;
+			uint constant L1 = L2 / 10;
+			uint constant LEN = 10 + L1 * 5;
+			function f() {
+				uint[LEN] a;
+			}
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Cyclic constant definition (or maximum recursion depth exhausted).");
+}
+
+BOOST_AUTO_TEST_CASE(array_length_with_pure_functions)
+{
+	char const* text = R"(
+		contract C {
+			uint constant LEN = keccak256(ripemd160(33));
+			uint[LEN] ids;
+		}
+	)";
+	CHECK_ERROR(text, TypeError, "Invalid array length, expected integer literal or constant expression.");
 }
 
 BOOST_AUTO_TEST_CASE(array_length_invalid_expression)

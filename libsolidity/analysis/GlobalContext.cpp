@@ -36,7 +36,7 @@ namespace solidity
 GlobalContext::GlobalContext():
 m_magicVariables(vector<shared_ptr<MagicVariableDeclaration const>>{
 	make_shared<MagicVariableDeclaration>("abi", make_shared<MagicType>(MagicType::Kind::ABI)),
-	make_shared<MagicVariableDeclaration>("addmod", make_shared<FunctionType>(strings{"uint256", "uint256", "uint256"}, strings{"uint256"}, FunctionType::Kind::AddMod, false, StateMutability::Pure)),
+	make_shared<MagicVariableDeclaration>("addmod", make_shared<FunctionType>(strings{"uint", "uint", "uint"}, strings{"uint"}, FunctionType::Kind::AddMod, false, StateMutability::Pure)),
 	make_shared<MagicVariableDeclaration>("assert", make_shared<FunctionType>(strings{"bool"}, strings{}, FunctionType::Kind::Assert, false, StateMutability::Pure)),
 	make_shared<MagicVariableDeclaration>("block", make_shared<MagicType>(MagicType::Kind::Block)),
 	make_shared<MagicVariableDeclaration>("blockhash", make_shared<FunctionType>(strings{"uint256"}, strings{"bytes32"}, FunctionType::Kind::BlockHash, false, StateMutability::View)),
@@ -49,7 +49,7 @@ m_magicVariables(vector<shared_ptr<MagicVariableDeclaration const>>{
 	make_shared<MagicVariableDeclaration>("log3", make_shared<FunctionType>(strings{"bytes32", "bytes32", "bytes32", "bytes32"}, strings{}, FunctionType::Kind::Log3)),
 	make_shared<MagicVariableDeclaration>("log4", make_shared<FunctionType>(strings{"bytes32", "bytes32", "bytes32", "bytes32", "bytes32"}, strings{}, FunctionType::Kind::Log4)),
 	make_shared<MagicVariableDeclaration>("msg", make_shared<MagicType>(MagicType::Kind::Message)),
-	make_shared<MagicVariableDeclaration>("mulmod", make_shared<FunctionType>(strings{"uint256", "uint256", "uint256"}, strings{"uint256"}, FunctionType::Kind::MulMod, false, StateMutability::Pure)),
+	make_shared<MagicVariableDeclaration>("mulmod", make_shared<FunctionType>(strings{"uint", "uint", "uint"}, strings{"uint"}, FunctionType::Kind::MulMod, false, StateMutability::Pure)),
 	make_shared<MagicVariableDeclaration>("now", make_shared<IntegerType>(256)),
 	make_shared<MagicVariableDeclaration>("require", make_shared<FunctionType>(strings{"bool"}, strings{}, FunctionType::Kind::Require, false, StateMutability::Pure)),
 	make_shared<MagicVariableDeclaration>("require", make_shared<FunctionType>(strings{"bool", "string memory"}, strings{}, FunctionType::Kind::Require, false, StateMutability::Pure)),
