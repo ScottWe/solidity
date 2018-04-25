@@ -1587,7 +1587,7 @@ unsigned ArrayType::calldataEncodedSize(bool _padded) const
 
 bool ArrayType::isDynamicallyEncoded() const
 {
-	return isDynamicallySized() || baseType()->isDynamicallyEncoded();
+	return !isByteArray() && (isDynamicallySized() || baseType()->isDynamicallyEncoded());
 }
 
 bigint ArrayType::getFixedBitwidth() const {
@@ -1601,6 +1601,8 @@ bigint ArrayType::getFixedBitwidth() const {
 
 bigint ArrayType::storageSize() const
 {
+	if (isByteArray())
+		return 2;
 	if (isDynamicallySized())
 		return MAX_ARRAY_SIZE + 1; // One extra slot for the length
 
@@ -1611,6 +1613,8 @@ bigint ArrayType::storageSize() const
 
 bigint ArrayType::memorySize() const
 {
+	if (isByteArray())
+		return 2;
 	if (isDynamicallySized())
 		return 1;
 
