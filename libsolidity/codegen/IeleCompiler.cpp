@@ -216,7 +216,8 @@ static bool checkForRecursiveStructs(const ContractDefinition &contract) {
 
 void IeleCompiler::compileContract(
     const ContractDefinition &contract,
-    const std::map<const ContractDefinition *, iele::IeleContract *> &contracts) {
+    const std::map<const ContractDefinition *, iele::IeleContract *> &contracts,
+    const bytes &metadata) {
 
 
   CompiledContracts = contracts;
@@ -469,6 +470,9 @@ void IeleCompiler::compileContract(
 
   // Store compilation result.
   CompiledContract = CompilingContract;
+
+  // Append the metadata to the compiled contract.
+  CompiledContract->appendAuxiliaryDataToEnd(metadata);
 }
 
 int IeleCompiler::getNextUniqueIntToken() {
