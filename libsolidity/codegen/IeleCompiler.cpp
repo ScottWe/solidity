@@ -1000,7 +1000,7 @@ void IeleCompiler::appendModifierOrFunctionCode() {
     }
     else {
       // Retrieve modifier definition from its name
-      const ModifierDefinition *modifier;
+      const ModifierDefinition *modifier = nullptr;
       if (contractFor(CompilingFunctionASTNode)->isLibrary()) {
         for (ModifierDefinition const* mod: contractFor(CompilingFunctionASTNode)->functionModifiers())
           if (mod->name() == modifierInvocation->name()->name())
@@ -6220,7 +6220,7 @@ iele::IeleLocalVariable *IeleCompiler::appendBinaryOperator(
   iele::IeleInstruction::IeleOps BinOpcode;
 
   bool fixed = false, issigned = false;
-  int nbytes;
+  int nbytes = 0;
   switch (ResultType->category()) {
   case Type::Category::Integer: {
     const IntegerType *type = dynamic_cast<const IntegerType *>(ResultType.get());
