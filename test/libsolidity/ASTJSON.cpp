@@ -52,8 +52,8 @@ BOOST_AUTO_TEST_CASE(short_type_name)
 	Json::Value astJson = ASTJsonConverter(false, sourceIndices).toJson(c.ast("a"));
 	Json::Value varDecl = astJson["nodes"][0]["nodes"][0]["body"]["statements"][0]["declarations"][0];
 	BOOST_CHECK_EQUAL(varDecl["storageLocation"], "memory");
-	BOOST_CHECK_EQUAL(varDecl["typeDescriptions"]["typeIdentifier"], "t_array$_t_uint256_$dyn_memory_ptr");
-	BOOST_CHECK_EQUAL(varDecl["typeDescriptions"]["typeString"], "uint256[]");
+	BOOST_CHECK_EQUAL(varDecl["typeDescriptions"]["typeIdentifier"], "t_array$_t_uint_$dyn_memory_ptr");
+	BOOST_CHECK_EQUAL(varDecl["typeDescriptions"]["typeString"], "uint[]");
 }
 
 BOOST_AUTO_TEST_CASE(short_type_name_ref)
@@ -67,8 +67,8 @@ BOOST_AUTO_TEST_CASE(short_type_name_ref)
 	Json::Value astJson = ASTJsonConverter(false, sourceIndices).toJson(c.ast("a"));
 	Json::Value varDecl = astJson["nodes"][0]["nodes"][0]["body"]["statements"][0]["declarations"][0];
 	BOOST_CHECK_EQUAL(varDecl["storageLocation"], "memory");
-	BOOST_CHECK_EQUAL(varDecl["typeName"]["typeDescriptions"]["typeIdentifier"], "t_array$_t_array$_t_uint256_$dyn_storage_$dyn_storage_ptr");
-	BOOST_CHECK_EQUAL(varDecl["typeName"]["typeDescriptions"]["typeString"], "uint256[][]");
+	BOOST_CHECK_EQUAL(varDecl["typeName"]["typeDescriptions"]["typeIdentifier"], "t_array$_t_array$_t_uint_$dyn_storage_$dyn_storage_ptr");
+	BOOST_CHECK_EQUAL(varDecl["typeName"]["typeDescriptions"]["typeString"], "uint[][]");
 }
 
 BOOST_AUTO_TEST_CASE(long_type_name_binary_operation)
@@ -93,156 +93,10 @@ BOOST_AUTO_TEST_CASE(long_type_name_identifier)
 	c.parseAndAnalyze();
 	map<string, unsigned> sourceIndices;
 	sourceIndices["a"] = 1;
-	Json::Value astJson = ASTJsonConverter(true, sourceIndices).toJson(c.ast("a"));
-	Json::Value usingFor = astJson["children"][1]["children"][0];
-	BOOST_CHECK_EQUAL(usingFor["name"], "UsingForDirective");
-	BOOST_CHECK_EQUAL(usingFor["src"], "26:17:1");
-	BOOST_CHECK_EQUAL(usingFor["children"][0]["name"], "UserDefinedTypeName");
-	BOOST_CHECK_EQUAL(usingFor["children"][0]["attributes"]["name"], "L");
-	BOOST_CHECK_EQUAL(usingFor["children"][1]["name"], "ElementaryTypeName");
-	BOOST_CHECK_EQUAL(usingFor["children"][1]["attributes"]["name"], "uint");
-}
-
-BOOST_AUTO_TEST_CASE(enum_value)
-{
-	CompilerStack c;
-	c.addSource("a", "contract C { enum E { A, B } }");
-	c.setEVMVersion(dev::test::Options::get().evmVersion());
-	c.parseAndAnalyze();
-	map<string, unsigned> sourceIndices;
-	sourceIndices["a"] = 1;
-	Json::Value astJson = ASTJsonConverter(true, sourceIndices).toJson(c.ast("a"));
-	Json::Value enumDefinition = astJson["children"][0]["children"][0];
-	BOOST_CHECK_EQUAL(enumDefinition["children"][0]["name"], "EnumValue");
-	BOOST_CHECK_EQUAL(enumDefinition["children"][0]["attributes"]["name"], "A");
-	BOOST_CHECK_EQUAL(enumDefinition["children"][0]["src"], "22:1:1");
-	BOOST_CHECK_EQUAL(enumDefinition["children"][1]["name"], "EnumValue");
-	BOOST_CHECK_EQUAL(enumDefinition["children"][1]["attributes"]["name"], "B");
-	BOOST_CHECK_EQUAL(enumDefinition["children"][1]["src"], "25:1:1");
-}
-
-BOOST_AUTO_TEST_CASE(modifier_definition)
-{
-	CompilerStack c;
-	c.addSource("a", "contract C { modifier M(uint i) { _; } function F() M(1) {} }");
-	c.setEVMVersion(dev::test::Options::get().evmVersion());
-	c.parseAndAnalyze();
-	map<string, unsigned> sourceIndices;
-	sourceIndices["a"] = 1;
-	Json::Value astJson = ASTJsonConverter(true, sourceIndices).toJson(c.ast("a"));
-	Json::Value modifier = astJson["children"][0]["children"][0];
-	BOOST_CHECK_EQUAL(modifier["name"], "ModifierDefinition");
-	BOOST_CHECK_EQUAL(modifier["attributes"]["name"], "M");
-	BOOST_CHECK_EQUAL(modifier["src"], "13:25:1");
-}
-
-BOOST_AUTO_TEST_CASE(modifier_invocation)
-{
-	CompilerStack c;
-	c.addSource("a", "contract C { modifier M(uint i) { _; } function F() M(1) {} }");
-	c.setEVMVersion(dev::test::Options::get().evmVersion());
-	c.parseAndAnalyze();
-	map<string, unsigned> sourceIndices;
-	sourceIndices["a"] = 1;
-	Json::Value astJson = ASTJsonConverter(true, sourceIndices).toJson(c.ast("a"));
-	Json::Value modifier = astJson["children"][0]["children"][1]["children"][2];
-	BOOST_CHECK_EQUAL(modifier["name"], "ModifierInvocation");
-	BOOST_CHECK_EQUAL(modifier["src"], "52:4:1");
-	BOOST_CHECK_EQUAL(modifier["children"][0]["attributes"]["type"], "modifier (uint)");
-	BOOST_CHECK_EQUAL(modifier["children"][0]["attributes"]["value"], "M");
-	BOOST_CHECK_EQUAL(modifier["children"][1]["attributes"]["value"], "1");
-}
-
-BOOST_AUTO_TEST_CASE(event_definition)
-{
-	CompilerStack c;
-	c.addSource("a", "contract C { event E(); }");
-	c.setEVMVersion(dev::test::Options::get().evmVersion());
-	c.parseAndAnalyze();
-	map<string, unsigned> sourceIndices;
-	sourceIndices["a"] = 1;
-	Json::Value astJson = ASTJsonConverter(true, sourceIndices).toJson(c.ast("a"));
-	Json::Value event = astJson["children"][0]["children"][0];
-	BOOST_CHECK_EQUAL(event["name"], "EventDefinition");
-	BOOST_CHECK_EQUAL(event["attributes"]["name"], "E");
-	BOOST_CHECK_EQUAL(event["src"], "13:10:1");
-}
-
-BOOST_AUTO_TEST_CASE(array_type_name)
-{
-	CompilerStack c;
-	c.addSource("a", "contract C { uint[] i; }");
-	c.setEVMVersion(dev::test::Options::get().evmVersion());
-	c.parseAndAnalyze();
-	map<string, unsigned> sourceIndices;
-	sourceIndices["a"] = 1;
-	Json::Value astJson = ASTJsonConverter(true, sourceIndices).toJson(c.ast("a"));
-	Json::Value array = astJson["children"][0]["children"][0]["children"][0];
-	BOOST_CHECK_EQUAL(array["name"], "ArrayTypeName");
-	BOOST_CHECK_EQUAL(array["src"], "13:6:1");
-}
-
-BOOST_AUTO_TEST_CASE(placeholder_statement)
-{
-	CompilerStack c;
-	c.addSource("a", "contract C { modifier M { _; } }");
-	c.setEVMVersion(dev::test::Options::get().evmVersion());
-	c.parseAndAnalyze();
-	map<string, unsigned> sourceIndices;
-	sourceIndices["a"] = 1;
-	Json::Value astJson = ASTJsonConverter(true, sourceIndices).toJson(c.ast("a"));
-	Json::Value placeholder = astJson["children"][0]["children"][0]["children"][1]["children"][0];
-	BOOST_CHECK_EQUAL(placeholder["name"], "PlaceholderStatement");
-	BOOST_CHECK_EQUAL(placeholder["src"], "26:1:1");
-}
-
-BOOST_AUTO_TEST_CASE(non_utf8)
-{
-	CompilerStack c;
-	c.addSource("a", "contract C { function f() { var x = hex\"ff\"; } }");
-	c.setEVMVersion(dev::test::Options::get().evmVersion());
-	c.parseAndAnalyze();
-	map<string, unsigned> sourceIndices;
-	sourceIndices["a"] = 1;
-	Json::Value astJson = ASTJsonConverter(true, sourceIndices).toJson(c.ast("a"));
-	Json::Value literal = astJson["children"][0]["children"][0]["children"][2]["children"][0]["children"][1];
-	BOOST_CHECK_EQUAL(literal["name"], "Literal");
-	BOOST_CHECK_EQUAL(literal["attributes"]["hexvalue"], "ff");
-	BOOST_CHECK_EQUAL(literal["attributes"]["token"], "string");
-	BOOST_CHECK_EQUAL(literal["attributes"]["value"], Json::nullValue);
-	BOOST_CHECK(literal["attributes"]["type"].asString().find("invalid") != string::npos);
-}
-
-BOOST_AUTO_TEST_CASE(function_type)
-{
-	CompilerStack c;
-	c.addSource("a",
-		"contract C { function f(function() external payable returns (uint) x) "
-		"returns (function() external constant returns (uint)) {} }"
-	);
-	c.setEVMVersion(dev::test::Options::get().evmVersion());
-	c.parseAndAnalyze();
-	map<string, unsigned> sourceIndices;
-	sourceIndices["a"] = 1;
-	Json::Value astJson = ASTJsonConverter(true, sourceIndices).toJson(c.ast("a"));
-	Json::Value fun = astJson["children"][0]["children"][0];
-	BOOST_CHECK_EQUAL(fun["name"], "FunctionDefinition");
-	Json::Value argument = fun["children"][0]["children"][0];
-	BOOST_CHECK_EQUAL(argument["name"], "VariableDeclaration");
-	BOOST_CHECK_EQUAL(argument["attributes"]["name"], "x");
-	BOOST_CHECK_EQUAL(argument["attributes"]["type"], "function () payable external returns (uint)");
-	Json::Value funType = argument["children"][0];
-	BOOST_CHECK_EQUAL(funType["attributes"]["constant"], false);
-	BOOST_CHECK_EQUAL(funType["attributes"]["payable"], true);
-	BOOST_CHECK_EQUAL(funType["attributes"]["visibility"], "external");
-	Json::Value retval = fun["children"][1]["children"][0];
-	BOOST_CHECK_EQUAL(retval["name"], "VariableDeclaration");
-	BOOST_CHECK_EQUAL(retval["attributes"]["name"], "");
-	BOOST_CHECK_EQUAL(retval["attributes"]["type"], "function () view external returns (uint)");
-	funType = retval["children"][0];
-	BOOST_CHECK_EQUAL(funType["attributes"]["constant"], true);
-	BOOST_CHECK_EQUAL(funType["attributes"]["payable"], false);
-	BOOST_CHECK_EQUAL(funType["attributes"]["visibility"], "external");
+	Json::Value astJson = ASTJsonConverter(false, sourceIndices).toJson(c.ast("a"));
+	Json::Value varDecl = astJson["nodes"][0]["nodes"][1]["body"]["statements"][0]["initialValue"];
+	BOOST_CHECK_EQUAL(varDecl["typeDescriptions"]["typeIdentifier"], "t_array$_t_uint_$dyn_storage");
+	BOOST_CHECK_EQUAL(varDecl["typeDescriptions"]["typeString"], "uint[] storage ref");
 }
 
 BOOST_AUTO_TEST_CASE(documentation)

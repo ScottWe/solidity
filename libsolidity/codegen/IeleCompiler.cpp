@@ -340,13 +340,6 @@ void IeleCompiler::compileContract(
   // Visit fallback.
   if (const FunctionDefinition *fallback = contract.fallbackFunction())
     fallback->accept(*this);
-  else {
-    iele::IeleFunction *Fallback =
-      iele::IeleFunction::Create(&Context, true, "deposit", CompilingContract);
-    iele::IeleBlock *FallbackBlock =
-      iele::IeleBlock::Create(&Context, "entry", Fallback);
-    iele::IeleInstruction::CreateRetVoid(FallbackBlock);
-  }
 
   // Visit base constructors. If any don't exist create an
   // @<base-contract-name>init function that contains only state variable

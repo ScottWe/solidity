@@ -244,6 +244,14 @@ bool RPCSession::miner_setEtherbase(string const& _address)
 
 void RPCSession::test_setBalance(vector<string> _accounts, string _balance) {
 	string forks;
+	if (test::Options::get().evmVersion() >= solidity::EVMVersion::tangerineWhistle())
+		forks += "\"EIP150ForkBlock\": \"0x00\",\n";
+	if (test::Options::get().evmVersion() >= solidity::EVMVersion::spuriousDragon())
+		forks += "\"EIP158ForkBlock\": \"0x00\",\n";
+	if (test::Options::get().evmVersion() >= solidity::EVMVersion::byzantium())
+		forks += "\"byzantiumForkBlock\": \"0x00\",\n";
+	if (test::Options::get().evmVersion() >= solidity::EVMVersion::constantinople())
+		forks += "\"constantinopleForkBlock\": \"0x00\",\n";
 	static string const c_configString = R"(
 	{
 		"sealEngine": "NoProof",
@@ -251,7 +259,9 @@ void RPCSession::test_setBalance(vector<string> _accounts, string _balance) {
 			"accountStartNonce": "0x00",
 			"maximumExtraDataSize": "0x1000000",
 			"blockReward": "0x",
-			"allowFutureBlocks": true
+			"allowFutureBlocks": true,
+			)" + forks + R"(
+			"homesteadForkBlock": "0x00"
 		},
 		"genesis": {
 			"author": "0000000000000010000000000000000000000000",

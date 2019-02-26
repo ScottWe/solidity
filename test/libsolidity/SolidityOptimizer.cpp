@@ -76,9 +76,9 @@ public:
 	{
 		m_nonOptimizedBytecode = compileAndRunWithOptimizer(_sourceCode, _value, _contractName, false, _optimizeRuns);
 		m_nonOptimizedContract = m_contractAddress;
-		bytes optimizedBytecode = compileAndRunWithOptimizer(_sourceCode, _value, _contractName, true, _optimizeRuns);
-		size_t nonOptimizedSize = nonOptimizedBytecode.size();
-		size_t optimizedSize = optimizedBytecode.size();
+		m_optimizedBytecode = compileAndRunWithOptimizer(_sourceCode, _value, _contractName, true, _optimizeRuns);
+		size_t nonOptimizedSize = m_nonOptimizedBytecode.size();
+		size_t optimizedSize = m_optimizedBytecode.size();
 		BOOST_CHECK_MESSAGE(
 			_optimizeRuns < 50 || optimizedSize < nonOptimizedSize,
 			string("Optimizer did not reduce bytecode size. Non-optimized size: ") +
